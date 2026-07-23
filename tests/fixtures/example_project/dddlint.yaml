@@ -1,0 +1,29 @@
+similarity_threshold: 0.85
+enforce_canonical: true
+
+forbidden:
+  - util
+  - helper
+  - manager
+  - data
+  - client
+
+synonyms:
+  - canonical: customer
+    aliases: [client, user, accountholder]
+  - canonical: order
+    aliases: [purchase, transaction]
+
+contexts:
+  - name: billing
+    include: ["**/billing/**"]
+    forbidden: [discount]
+    synonyms:
+      - canonical: invoice
+        aliases: [bill, statement]
+
+languages:
+  svelte:
+    extensions: [".svelte"]
+  python:
+    extensions: [".py"]

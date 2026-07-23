@@ -1,0 +1,21 @@
+similarity_threshold: 0.85
+enforce_canonical: true
+
+forbidden:
+  - util
+  - helper
+  - manager
+
+synonyms:
+  - canonical: finding
+    aliases: [violation, issue, error]
+  - canonical: definition
+    aliases: [symbol, declaration]
+  - canonical: config
+    aliases: [settings, configuration]
+
+contexts:
+  - name: extraction
+    include: ["**/extract.py"]
+  - name: checking
+    include: ["**/check.py", "**/config_check.py"]

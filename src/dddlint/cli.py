@@ -1,0 +1,111 @@
+from collections import defaultdict
+from pathlib import Path
+from typing import Annotated
+
+import typer
+from rich.console import Console
+
+from .check import Finding, check
+from .config import Config, load_config
+from .config_check import check_config
+from .extract import Definition, definitions, language_for
+
+app = typer.Typer(add_completion=False, no_args_is_help=True)
+console = Console()
+
+SKIP = {".git", ".venv", "node_modules", "__pycache__", "target", "dist", "build"}
+DEFAULT_CONFIG = Path("dddlint.yaml")
+
+RULE_STYLE: dict[str, str] = {
+    "forbidden": "bold red",
+    "alias": "bold yellow",
+    "drift": "bold cyan",
+    "config:forbidden-canonical-clash": "bold red",
+    "config:alias-conflict": "bold yellow",
+    "config:duplicate-name": "bold cyan",
+}
+
+
+def _resolve(root: Path | None, config: Path | None) -> tuple[Path, Path]:
+    if root is None:
+        root = Path.cwd()
+    if config is None:
+        config = root / DEFAULT_CONFIG
+        if not config.exists():
+            config = Path.cwd() / DEFAULT_CONFIG
+    return root, config
+
+
+def _print_findings(findings: list[Finding]) -> None:
+    by_file: dict[Path, list[Finding]] = defaultdict(list)
+    for f in findings:
+        by_file[f.path].append(f)
+    for path, file_findings in by_file.items():
+        console.print(f"\n[bold white]{path}[/bold white]")
+        console.rule(style="dim")
+        for f in file_findings:
+            style = RULE_STYLE.get(f.rule, "bold white")
+            console.print(
+                f"  [dim]{f.line:>4}[/dim]  [{style}]{f.rule:<10}[/{style}]"
+                f"  [bold]{f.name}[/bold]  [dim]{f.message}[/dim]"
+            )
+
+
+@app.command()
+def lint(
+    root: Annotated[Path | None, typer.Argument()] = None,
+    config: Annotated[Path | None, typer.Option()] = None,
+) -> None:
+    """Lint a codebase for DDD ubiquitous language violations."""
+    root, config = _resolve(root, config)
+    settings = load_config(config)
+    extra = {
+        suffix: name
+        for name, override in settings.languages.items()
+        for suffix in override.extensions
+    }
+    collected: list[Definition] = []
+    for path in root.rglob("*"):
+        if not path.is_file() or SKIP & set(path.parts):
+            continue
+        language = language_for(path, extra)
+        if language is None:
+            continue
+        collected.extend(definitions(path, language))
+
+    findings = check_config(settings, config) + check(collected, settings)
+    if findings:
+        _print_findings(findings)
+        n = len(findings)
+        console.print(f"\n[bold red]✖ {n} finding{'s' if n != 1 else ''}[/bold red]")
+    else:
+        console.print("[bold green]✔ no findings[/bold green]")
+    raise typer.Exit(1 if findings else 0)
+
+
+@app.command()
+def html(
+    root: Annotated[Path | None, typer.Argument()] = None,
+    config: Annotated[Path | None, typer.Option()] = None,
+) -> None:
+    """Open an interactive DDD graph in the browser."""
+    import tempfile
+    import webbrowser
+    from .view import _generate_html
+
+    root, config = _resolve(root, config)
+    settings = load_config(config)
+    content = _generate_html(settings)
+    with tempfile.NamedTemporaryFile(suffix=".html", delete=False, mode="w") as f:
+        f.write(content)
+        path = f.name
+    webbrowser.open(f"file://{path}")
+
+
+@app.command()
+def lsp(
+    root: Annotated[Path | None, typer.Argument()] = None,
+) -> None:
+    """Start the LSP server (stdio transport)."""
+    from .server import main as server_main
+    server_main()
