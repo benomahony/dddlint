@@ -45,6 +45,10 @@ def test_to_path_extracts_filesystem_path():
     assert _to_path("file:///tmp/foo.py") == Path("/tmp/foo.py")
 
 
+def test_to_path_decodes_percent_escapes():
+    assert _to_path("file:///tmp/a%20b.py") == Path("/tmp/a b.py")
+
+
 def test_to_diagnostic_maps_finding_to_range():
     finding = Finding(Path("a.py"), 2, "OrderManager", "forbidden", "banned", col=6)
     diag = _to_diagnostic(finding)

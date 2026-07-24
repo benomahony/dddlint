@@ -1,8 +1,8 @@
 import logging
 from pathlib import Path
-from urllib.parse import urlparse
 
 from lsprotocol import types
+from pygls import uris
 from pygls.lsp.server import LanguageServer
 
 from . import __version__
@@ -36,8 +36,10 @@ server = DddlintServer()
 
 def _to_path(uri: str) -> Path:
     assert uri, "uri must be non-empty"
-    assert isinstance(uri, str), "uri must be a string"
-    return Path(urlparse(uri).path)
+    assert uri.startswith("file:"), "uri must be a file:// URI"
+    fs_path = uris.to_fs_path(uri)
+    assert fs_path, "uri must resolve to a filesystem path"
+    return Path(fs_path)
 
 
 def _scan(ls: DddlintServer) -> None:
