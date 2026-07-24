@@ -22,8 +22,6 @@ _RADII = {
 
 
 def _build_graph(config: Config) -> dict:
-    assert config is not None, "config must not be None"
-    assert isinstance(config, Config), "config must be a Config"
     nodes: list[dict] = []
     edges: list[dict] = []
     seen: set[str] = set()
@@ -76,6 +74,8 @@ def _build_graph(config: Config) -> dict:
                     node(aid, alias, "alias")
                     edge(aid, cid, "alias")
 
+    assert any(n["type"] == "global" for n in nodes), "graph must contain the global node"
+    assert len(seen) == len(nodes), "each node id must be unique"
     return {"nodes": nodes, "edges": edges}
 
 
@@ -358,7 +358,8 @@ loop();
 
 
 def _generate_html(config: Config) -> str:
-    assert config is not None, "config must not be None"
-    assert isinstance(config, Config), "config must be a Config"
     graph = _build_graph(config)
-    return _HTML_TEMPLATE.format(data=json.dumps(graph))
+    assert "nodes" in graph and "edges" in graph, "graph must have nodes and edges"
+    html = _HTML_TEMPLATE.format(data=json.dumps(graph))
+    assert html.startswith("<!DOCTYPE html>"), "output must be an HTML document"
+    return html
