@@ -27,8 +27,8 @@ class DddlintServer(LanguageServer):
     def __init__(self) -> None:
         super().__init__("dddlint", __version__)
         self.ddd_findings: dict[str, list[Finding]] = {}
-        assert isinstance(self.ddd_findings, dict), "findings must be a dict"
-        assert self.ddd_findings == {}, "findings must start empty"
+        assert self.name == "dddlint", "server name must match the package"
+        assert self.version == __version__, "server version must match package version"
 
 
 server = DddlintServer()
@@ -43,8 +43,8 @@ def _to_path(uri: str) -> Path:
 
 
 def _scan(ls: DddlintServer) -> None:
-    assert ls is not None, "language server must not be None"
-    assert isinstance(ls, DddlintServer), "ls must be a DddlintServer"
+    assert isinstance(ls.ddd_findings, dict), "server must expose a findings cache"
+    assert ls.workspace is not None, "server must have a workspace to scan"
     root_uri = ls.workspace.root_uri
     if not root_uri:
         return
@@ -91,8 +91,8 @@ def _scan(ls: DddlintServer) -> None:
 
 
 def _to_diagnostic(f: Finding) -> types.Diagnostic:
-    assert f is not None, "finding must not be None"
-    assert f.line >= 0, "line must be non-negative"
+    assert f.line >= 0, "finding line must be non-negative"
+    assert f.col >= 0, "finding column must be non-negative"
     start = types.Position(line=f.line, character=f.col)
     end = types.Position(line=f.line, character=f.col + len(f.name))
     return types.Diagnostic(
@@ -106,15 +106,15 @@ def _to_diagnostic(f: Finding) -> types.Diagnostic:
 
 @server.feature(types.TEXT_DOCUMENT_DID_OPEN)
 def did_open(ls: DddlintServer, params: types.DidOpenTextDocumentParams) -> None:
-    assert ls is not None, "ls must not be None"
-    assert params is not None, "params must not be None"
+    assert isinstance(ls, DddlintServer), "handler must receive a DddlintServer"
+    assert isinstance(params, types.DidOpenTextDocumentParams), "wrong event params type"
     _scan(ls)
 
 
 @server.feature(types.TEXT_DOCUMENT_DID_SAVE)
 def did_save(ls: DddlintServer, params: types.DidSaveTextDocumentParams) -> None:
-    assert ls is not None, "ls must not be None"
-    assert params is not None, "params must not be None"
+    assert isinstance(ls, DddlintServer), "handler must receive a DddlintServer"
+    assert isinstance(params, types.DidSaveTextDocumentParams), "wrong event params type"
     _scan(ls)
 
 
@@ -123,8 +123,8 @@ def did_save(ls: DddlintServer, params: types.DidSaveTextDocumentParams) -> None
     types.CodeActionOptions(code_action_kinds=[types.CodeActionKind.QuickFix]),
 )
 def code_action(ls: DddlintServer, params: types.CodeActionParams) -> list[types.CodeAction]:
-    assert ls is not None, "ls must not be None"
-    assert params is not None, "params must not be None"
+    assert isinstance(ls, DddlintServer), "handler must receive a DddlintServer"
+    assert params.text_document.uri, "code action requires a document uri"
     uri = params.text_document.uri
     cursor_line = params.range.start.line
     actions: list[types.CodeAction] = []
@@ -155,6 +155,6 @@ def code_action(ls: DddlintServer, params: types.CodeActionParams) -> list[types
 
 
 def main() -> None:
-    assert server is not None, "server must be initialized"
-    assert isinstance(server, DddlintServer), "server must be a DddlintServer"
+    assert server.name == "dddlint", "server must be the dddlint server"
+    assert callable(server.start_io), "server must support stdio transport"
     server.start_io()
