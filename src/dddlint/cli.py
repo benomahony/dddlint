@@ -92,7 +92,7 @@ def lint(
     assert isinstance(root, Path), "resolved root must be a Path"
     assert config.name, "config path must have a name"
     settings = load_config(config)
-    extra: dict[str, str] = {}
+    extra = settings.extension_map()
     collected: list[Definition] = []
     for path in root.rglob("*"):
         if not path.is_file() or SKIP & set(path.parts):

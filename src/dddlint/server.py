@@ -49,7 +49,7 @@ def _scan(ls: DddlintServer) -> None:
     config_path = root / DEFAULT_CONFIG
     settings = load_config(config_path) if config_path.exists() else Config()
 
-    extra: dict[str, str] = {}
+    extra = settings.extension_map()
     collected: list[Definition] = []
     for path in root.rglob("*"):
         if not path.is_file() or SKIP & set(path.parts):

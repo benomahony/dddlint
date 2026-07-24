@@ -33,6 +33,16 @@ def test_lint_clean_project_exits_zero(tmp_path: Path):
     assert "no findings" in result.stdout
 
 
+def test_lint_uses_custom_language_extension(tmp_path: Path):
+    (tmp_path / "dddlint.yaml").write_text(
+        "forbidden: [manager]\nlanguages:\n  python:\n    extensions: ['.txt']\n"
+    )
+    (tmp_path / "code.txt").write_text("class OrderManager:\n    pass\n")
+    result = runner.invoke(app, ["lint", str(tmp_path), "--config", str(tmp_path / "dddlint.yaml")])
+    assert result.exit_code == 1
+    assert "forbidden" in result.stdout
+
+
 def test_resolve_defaults_to_cwd_and_default_config(tmp_path: Path):
     root, config = _resolve(None, None)
     assert root == Path.cwd()
