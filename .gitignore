@@ -8,3 +8,14 @@ wheels/
 
 # Virtual environments
 .venv
+
+# zensical build output
+site/
+
+# Coverage and test/lint caches
+.coverage
+coverage.json
+htmlcov/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
