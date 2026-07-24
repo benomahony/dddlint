@@ -23,17 +23,17 @@ class Definition:
 
 
 def _kind_name(kind: object) -> str:
-    assert kind is not None, "kind must not be None"
     name = str(kind)
-    assert name, "kind name must be non-empty"
+    assert name, "kind must stringify to a non-empty name"
+    assert name.strip() == name, "kind name must not have surrounding whitespace"
     return name
 
 
 def _flatten(
     items: Iterable[Any], path: Path, source_lines: list[str], out: list[Definition]
 ) -> None:
-    assert path is not None, "path must not be None"
-    assert isinstance(out, list), "out must be a list"
+    assert isinstance(out, list), "out accumulator must be a list"
+    assert isinstance(source_lines, list), "source_lines must be a list of source lines"
     stack: deque[Any] = deque(items)
     while stack:
         item = stack.popleft()
@@ -48,14 +48,14 @@ def _flatten(
 
 
 def language_for(path: Path, extra: dict[str, str]) -> str | None:
-    assert isinstance(path, Path), "path must be a Path object"
-    assert extra is not None, "extra must not be None"
+    assert path.name, "path must have a filename to detect a language"
+    assert all(k.startswith(".") for k in extra), "extra keys must be file suffixes like '.rs'"
     return extra.get(path.suffix) or tslp.detect_language_from_path(str(path))
 
 
 def definitions(path: Path, language: str) -> list[Definition]:
-    assert isinstance(path, Path), "path must be a Path object"
-    assert language, "language must be non-empty"
+    assert language, "language must be non-empty for the parser"
+    assert path.exists(), "path must exist to read its source"
     source = path.read_text(errors="ignore")
     config = tslp.ProcessConfig(
         language=language,
