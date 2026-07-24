@@ -55,6 +55,15 @@ def test_resolve_falls_back_to_cwd_config_when_missing(tmp_path: Path):
     assert config.name == "dddlint.yaml"
 
 
+def test_html_reuses_single_temp_file():
+    from dddlint.cli import _write_temp_html
+
+    p1 = _write_temp_html("<html>1</html>")
+    p2 = _write_temp_html("<html>2</html>")
+    assert p1 == p2
+    assert Path(p2).read_text() == "<html>2</html>"
+
+
 def test_html_writes_and_opens_graph(tmp_path: Path):
     result = runner.invoke(
         app,

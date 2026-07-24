@@ -112,13 +112,22 @@ def lint(
     raise typer.Exit(1 if findings else 0)
 
 
+def _write_temp_html(content: str) -> str:
+    import tempfile
+
+    assert content, "content must be non-empty"
+    path = Path(tempfile.gettempdir()) / "dddlint-graph.html"
+    path.write_text(content)
+    assert path.exists(), "graph file must be written"
+    return str(path)
+
+
 @app.command()
 def html(
     root: Annotated[Path | None, typer.Argument()] = None,
     config: Annotated[Path | None, typer.Option()] = None,
 ) -> None:
     """Open an interactive DDD graph in the browser."""
-    import tempfile
     import webbrowser
 
     from .view import _generate_html
@@ -127,10 +136,7 @@ def html(
     assert isinstance(root, Path), "resolved root must be a Path"
     assert config.name, "config path must have a name"
     settings = load_config(config)
-    content = _generate_html(settings)
-    with tempfile.NamedTemporaryFile(suffix=".html", delete=False, mode="w") as f:
-        f.write(content)
-        path = f.name
+    path = _write_temp_html(_generate_html(settings))
     webbrowser.open(f"file://{path}")
 
 
