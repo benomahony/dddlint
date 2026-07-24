@@ -4,6 +4,10 @@ Polyglot ubiquitous language linter. Reads class, function, method, and type nam
 
 Works with any language tree-sitter recognises, without per-language queries. Slots into pre-commit hooks, CI pipelines, and coding agent loops via a non-zero exit code on findings. Ships with an LSP server for inline editor diagnostics and rename code actions.
 
+![dddlint LSP diagnostics inline in an editor](docs/assets/dddlint-lsp.png)
+
+📖 **[Full documentation](https://benomahony.github.io/dddlint/)**
+
 ## Install
 
 ```sh
@@ -63,11 +67,6 @@ contexts:
     synonyms:
       - canonical: invoice
         aliases: [bill, statement]
-
-# register file extensions for languages not auto-detected
-languages:
-  svelte:
-    extensions: [".svelte"]
 ```
 
 Global rules apply everywhere. Domain rules apply to matching paths. Context rules apply after domains, so a context can override a domain synonym.
