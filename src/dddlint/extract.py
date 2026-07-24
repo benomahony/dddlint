@@ -1,6 +1,7 @@
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import tree_sitter_language_pack as tslp
 
@@ -21,30 +22,39 @@ class Definition:
 
 
 def _kind_name(kind: object) -> str:
-    return getattr(kind, "type", None) or str(kind)
+    assert kind is not None, "kind must not be None"
+    name = str(kind)
+    assert name, "kind name must be non-empty"
+    return name
 
 
 def _flatten(
-    items: Iterable[object], path: Path, source_lines: list[str], out: list[Definition]
+    items: Iterable[Any], path: Path, source_lines: list[str], out: list[Definition]
 ) -> None:
-    for item in items:
+    assert path is not None, "path must not be None"
+    assert isinstance(out, list), "out must be a list"
+    stack: list[Any] = list(items)
+    while stack:
+        item = stack.pop(0)
         kind = _kind_name(item.kind)
         if item.name and kind in DEFINITION_KINDS:
             line = item.span.start_line
             line_text = source_lines[line] if line < len(source_lines) else ""
             col = line_text.find(item.name)
-            out.append(
-                Definition(item.name, kind, path, line, max(col, 0), item.doc_comment)
-            )
+            out.append(Definition(item.name, kind, path, line, max(col, 0), item.doc_comment))
         if item.children:
-            _flatten(item.children, path, source_lines, out)
+            stack[:0] = list(item.children)
 
 
 def language_for(path: Path, extra: dict[str, str]) -> str | None:
+    assert isinstance(path, Path), "path must be a Path object"
+    assert extra is not None, "extra must not be None"
     return extra.get(path.suffix) or tslp.detect_language_from_path(str(path))
 
 
 def definitions(path: Path, language: str) -> list[Definition]:
+    assert isinstance(path, Path), "path must be a Path object"
+    assert language, "language must be non-empty"
     source = path.read_text(errors="ignore")
     config = tslp.ProcessConfig(
         language=language,

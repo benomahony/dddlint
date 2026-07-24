@@ -1,7 +1,11 @@
 from pathlib import Path
 
+import pytest
+
 from dddlint.config import Config, Context, SynonymGroup
 from dddlint.config_check import check_config
+
+pytestmark = pytest.mark.unit
 
 CONFIG_PATH = Path("dddlint.yaml")
 
@@ -20,8 +24,20 @@ def test_context_overrides_domain_alias():
     from dddlint.extract import Definition
 
     config = Config(
-        domains=[Context(name="d", include=["**/*.py"], synonyms=[SynonymGroup(canonical="customer", aliases=["client"])])],
-        contexts=[Context(name="c", include=["**/*.py"], synonyms=[SynonymGroup(canonical="account", aliases=["client"])])],
+        domains=[
+            Context(
+                name="d",
+                include=["**/*.py"],
+                synonyms=[SynonymGroup(canonical="customer", aliases=["client"])],
+            )
+        ],
+        contexts=[
+            Context(
+                name="c",
+                include=["**/*.py"],
+                synonyms=[SynonymGroup(canonical="account", aliases=["client"])],
+            )
+        ],
     )
     defs = [Definition("ClientService", "Class", Path("src/x.py"), 0)]
     findings = check(defs, config)
@@ -42,7 +58,13 @@ def test_forbidden_canonical_clash():
 def test_alias_conflict_across_scopes():
     config = Config(
         synonyms=[SynonymGroup(canonical="customer", aliases=["client"])],
-        contexts=[Context(name="legacy", include=["**/legacy/**"], synonyms=[SynonymGroup(canonical="account", aliases=["client"])])],
+        contexts=[
+            Context(
+                name="legacy",
+                include=["**/legacy/**"],
+                synonyms=[SynonymGroup(canonical="account", aliases=["client"])],
+            )
+        ],
     )
     findings = check_config(config, CONFIG_PATH)
     assert any(f.rule == "config:alias-conflict" and f.name == "client" for f in findings)

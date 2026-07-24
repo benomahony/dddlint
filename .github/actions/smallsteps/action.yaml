@@ -1,0 +1,20 @@
+name: 'Smallsteps Ratchet Evaluation'
+description: 'Evaluates your quality goals'
+inputs:
+  SMALLSTEPS_PYTEST_COVERAGE:
+    description: "Current live performance value for 'Pytest Coverage'"
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install uv
+      uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+      with:
+        enable-cache: true
+
+    - name: Run Smallsteps Guardrail Validation
+      shell: bash
+      run: uvx smallsteps check
+      env:
+        SMALLSTEPS_PYTEST_COVERAGE: ${{ inputs.SMALLSTEPS_PYTEST_COVERAGE }}

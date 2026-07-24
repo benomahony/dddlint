@@ -21,9 +21,3 @@ contexts:
     synonyms:
       - canonical: invoice
         aliases: [bill, statement]
-
-languages:
-  svelte:
-    extensions: [".svelte"]
-  python:
-    extensions: [".py"]

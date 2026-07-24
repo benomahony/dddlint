@@ -1,4 +1,4 @@
-import re
+import logging
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -9,6 +9,8 @@ from .check import Finding, check
 from .config import Config, load_config
 from .config_check import check_config
 from .extract import Definition, definitions, language_for
+
+logger = logging.getLogger(__name__)
 
 SKIP = {".git", ".venv", "node_modules", "__pycache__", "target", "dist", "build"}
 DEFAULT_CONFIG = Path("dddlint.yaml")
@@ -24,16 +26,22 @@ class DddlintServer(LanguageServer):
     def __init__(self) -> None:
         super().__init__("dddlint", "v0.1.0")
         self.ddd_findings: dict[str, list[Finding]] = {}
+        assert isinstance(self.ddd_findings, dict), "findings must be a dict"
+        assert self.ddd_findings == {}, "findings must start empty"
 
 
 server = DddlintServer()
 
 
 def _to_path(uri: str) -> Path:
+    assert uri, "uri must be non-empty"
+    assert isinstance(uri, str), "uri must be a string"
     return Path(urlparse(uri).path)
 
 
 def _scan(ls: DddlintServer) -> None:
+    assert ls is not None, "language server must not be None"
+    assert isinstance(ls, DddlintServer), "ls must be a DddlintServer"
     root_uri = ls.workspace.root_uri
     if not root_uri:
         return
@@ -41,11 +49,7 @@ def _scan(ls: DddlintServer) -> None:
     config_path = root / DEFAULT_CONFIG
     settings = load_config(config_path) if config_path.exists() else Config()
 
-    extra = {
-        suffix: name
-        for name, override in settings.languages.items()
-        for suffix in override.extensions
-    }
+    extra: dict[str, str] = {}
     collected: list[Definition] = []
     for path in root.rglob("*"):
         if not path.is_file() or SKIP & set(path.parts):
@@ -55,8 +59,8 @@ def _scan(ls: DddlintServer) -> None:
             continue
         try:
             collected.extend(definitions(path, lang))
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("failed to extract definitions from %s: %s", path, exc)
 
     all_findings: list[Finding] = []
     if config_path.exists():
@@ -86,6 +90,8 @@ def _scan(ls: DddlintServer) -> None:
 
 
 def _to_diagnostic(f: Finding) -> types.Diagnostic:
+    assert f is not None, "finding must not be None"
+    assert f.line >= 0, "line must be non-negative"
     start = types.Position(line=f.line, character=f.col)
     end = types.Position(line=f.line, character=f.col + len(f.name))
     return types.Diagnostic(
@@ -99,11 +105,15 @@ def _to_diagnostic(f: Finding) -> types.Diagnostic:
 
 @server.feature(types.TEXT_DOCUMENT_DID_OPEN)
 def did_open(ls: DddlintServer, params: types.DidOpenTextDocumentParams) -> None:
+    assert ls is not None, "ls must not be None"
+    assert params is not None, "params must not be None"
     _scan(ls)
 
 
 @server.feature(types.TEXT_DOCUMENT_DID_SAVE)
 def did_save(ls: DddlintServer, params: types.DidSaveTextDocumentParams) -> None:
+    assert ls is not None, "ls must not be None"
+    assert params is not None, "params must not be None"
     _scan(ls)
 
 
@@ -111,9 +121,9 @@ def did_save(ls: DddlintServer, params: types.DidSaveTextDocumentParams) -> None
     types.TEXT_DOCUMENT_CODE_ACTION,
     types.CodeActionOptions(code_action_kinds=[types.CodeActionKind.QuickFix]),
 )
-def code_action(
-    ls: DddlintServer, params: types.CodeActionParams
-) -> list[types.CodeAction]:
+def code_action(ls: DddlintServer, params: types.CodeActionParams) -> list[types.CodeAction]:
+    assert ls is not None, "ls must not be None"
+    assert params is not None, "params must not be None"
     uri = params.text_document.uri
     cursor_line = params.range.start.line
     actions: list[types.CodeAction] = []
@@ -131,9 +141,7 @@ def code_action(
                             types.TextEdit(
                                 range=types.Range(
                                     start=types.Position(line=f.line, character=f.col),
-                                    end=types.Position(
-                                        line=f.line, character=f.col + len(f.name)
-                                    ),
+                                    end=types.Position(line=f.line, character=f.col + len(f.name)),
                                 ),
                                 new_text=f.fix,
                             )
@@ -146,4 +154,6 @@ def code_action(
 
 
 def main() -> None:
+    assert server is not None, "server must be initialized"
+    assert isinstance(server, DddlintServer), "server must be a DddlintServer"
     server.start_io()

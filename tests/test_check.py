@@ -1,8 +1,12 @@
 from pathlib import Path
 
+import pytest
+
 from dddlint.check import check, tokenise
 from dddlint.config import Config, Context, SynonymGroup
 from dddlint.extract import Definition
+
+pytestmark = pytest.mark.unit
 
 
 def test_tokenise_splits_every_case():
@@ -34,6 +38,16 @@ def test_context_scopes_rules():
     outside = [Definition("BillService", "Class", Path("src/core/x.py"), 1)]
     assert any(f.rule == "forbidden" for f in check(inside, config))
     assert not any(f.rule == "forbidden" for f in check(outside, config))
+
+
+def test_alias_fix_preserves_casing():
+    config = Config(synonyms=[SynonymGroup(canonical="customer", aliases=["client"])])
+    upper = check([Definition("CLIENT_REPO", "Class", Path("a.py"), 1)], config)
+    lower = check([Definition("client_repo", "Function", Path("a.py"), 1)], config)
+    cap = check([Definition("ClientRepo", "Class", Path("a.py"), 1)], config)
+    assert any(f.fix == "CUSTOMER_REPO" for f in upper if f.rule == "alias")
+    assert any(f.fix == "customer_repo" for f in lower if f.rule == "alias")
+    assert any(f.fix == "CustomerRepo" for f in cap if f.rule == "alias")
 
 
 def test_drift_flags_one_concept_many_spellings():

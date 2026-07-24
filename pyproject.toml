@@ -6,10 +6,12 @@ readme = "README.md"
 requires-python = ">=3.12"
 authors = [{ name = "benomahony" }]
 dependencies = [
+    "lsprotocol>=2025.0.0",
+    "mcp>=1.28.1",
     "pydantic>=2.13.4",
     "pygls>=2.1.1",
     "pyyaml>=6.0.3",
-    "tree-sitter>=0.25.2",
+    "rich>=15.0.0",
     "tree-sitter-language-pack>=1.8.1",
     "typer>=0.26.2",
 ]
@@ -28,5 +30,103 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/dddlint"]
 
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["examples"]
+force-exclude = true
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/dddlint/view.py" = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = [
+    "--cov=dddlint",
+    "--cov-branch",
+    "--cov-report=term-missing",
+    "--strict-markers",
+]
+markers = [
+    "unit: Fast unit tests (no subprocess, can run in parallel with -n auto)",
+    "integration: Slow integration tests (subprocess, run sequentially)",
+]
+
+[tool.coverage.run]
+branch = true
+omit = ["*/mcp_server.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+skips = ["B101"]
+
+[tool.basedpyright]
+include = ["src/dddlint"]
+typeCheckingMode = "standard"
+
+[tool.deptry]
+extend_exclude = ["tests"]
+
+[tool.deptry.per_rule_ignores]
+DEP001 = ["dddlint"]
+DEP002 = ["pytest", "pytest-cov", "pytest-examples", "pytest-xdist", "pytest-testmon", "pytest-timeout", "ruff", "basedpyright", "prek", "vulture", "bandit", "deptry", "cliqa", "bump-my-version", "zensical"]
+DEP003 = ["dddlint"]
+
+[tool.bumpversion]
+current_version = "0.1.0"
+parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
+serialize = ["{major}.{minor}.{patch}"]
+search = "{current_version}"
+replace = "{new_version}"
+regex = false
+ignore_missing_version = false
+tag = true
+sign_tags = false
+tag_name = "v{new_version}"
+tag_message = "Bump version: {current_version} → {new_version}"
+allow_dirty = false
+commit = true
+message = "Bump version: {current_version} → {new_version}"
+commit_args = ""
+
+[[tool.bumpversion.files]]
+filename = "pyproject.toml"
+search = "version = \"{current_version}\""
+replace = "version = \"{new_version}\""
+
+[[tool.bumpversion.files]]
+filename = "src/dddlint/__init__.py"
+search = "__version__ = \"{current_version}\""
+replace = "__version__ = \"{new_version}\""
+
 [dependency-groups]
-dev = ["pytest>=8.0"]
+dev = [
+    "bandit>=1.9.4",
+    "basedpyright>=1.39.9",
+    "bump-my-version>=1.4.1",
+    "cliqa>=0.1.5",
+    "deptry>=0.25.1",
+    "prek>=0.4.10",
+    "pytest>=8.0",
+    "pytest-cov>=7.1.0",
+    "pytest-examples>=0.0.18",
+    "pytest-testmon>=2.2.0",
+    "pytest-timeout>=2.4.0",
+    "pytest-xdist>=3.8.0",
+    "ruff>=0.15.22",
+    "vulture>=2.16",
+    "zensical>=0.0.51",
+]

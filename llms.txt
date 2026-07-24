@@ -1,0 +1,20 @@
+# dddlint
+
+> Polyglot ubiquitous language linter for codebases and coding agents
+
+## Documentation
+
+- [Installation](docs/index.md#installation): Install dddlint using pip or uv
+- [Usage](docs/index.md#usage): Learn how to use dddlint as a library or CLI tool
+- [Development](docs/index.md#development): Set up a development environment and run tests
+
+## Project Information
+
+- **Source Code**: https://github.com/benomahony/dddlint
+- **PyPI Package**: https://pypi.org/project/dddlint
+- **Documentation**: https://benomahony.github.io/dddlint
+
+## AI Integration
+
+- **MCP Server**: Model Context Protocol server available at `src/dddlint/mcp_server.py` for AI-powered documentation access
+- **Agent Skill**: Claude Code skill available in `.skills/dddlint/SKILL.md` for enhanced project interaction

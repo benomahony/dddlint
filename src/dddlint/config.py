@@ -16,10 +16,6 @@ class Context(BaseModel):
     synonyms: list[SynonymGroup] = []
 
 
-class LanguageOverride(BaseModel):
-    extensions: list[str] = []
-
-
 class Config(BaseModel):
     similarity_threshold: float = 0.85
     enforce_canonical: bool = True
@@ -27,8 +23,9 @@ class Config(BaseModel):
     synonyms: list[SynonymGroup] = []
     domains: list[Context] = []
     contexts: list[Context] = []
-    languages: dict[str, LanguageOverride] = {}
 
 
 def load_config(path: Path) -> Config:
+    assert path is not None, "path must not be None"
+    assert isinstance(path, Path), "path must be a Path object"
     return Config.model_validate(yaml.safe_load(path.read_text()) or {})

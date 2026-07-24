@@ -1,0 +1,9 @@
+# Smallsteps Configuration
+
+[[ratchets]]
+name = "Pytest Coverage"
+start = 2026-07-23
+end = 2026-12-31
+initial_value = 37.9454926624738
+goal_value = 90
+command = """uv run pytest --cov-report=json > /dev/null 2>&1; uv run python -c 'import json; print(json.load(open("coverage.json"))["totals"]["percent_covered"])'"""

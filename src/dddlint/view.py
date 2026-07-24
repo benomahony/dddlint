@@ -1,35 +1,45 @@
 import json
-from pathlib import Path
 
 from .config import Config
 
 _COLORS = {
-    "global":    "#7c3aed",
-    "domain":    "#2563eb",
-    "context":   "#0891b2",
+    "global": "#7c3aed",
+    "domain": "#2563eb",
+    "context": "#0891b2",
     "canonical": "#16a34a",
-    "alias":     "#374151",
+    "alias": "#374151",
     "forbidden": "#dc2626",
 }
 
 _RADII = {
-    "global": 38, "domain": 32, "context": 32,
-    "canonical": 22, "alias": 16, "forbidden": 16,
+    "global": 38,
+    "domain": 32,
+    "context": 32,
+    "canonical": 22,
+    "alias": 16,
+    "forbidden": 16,
 }
 
 
 def _build_graph(config: Config) -> dict:
+    assert config is not None, "config must not be None"
+    assert isinstance(config, Config), "config must be a Config"
     nodes: list[dict] = []
     edges: list[dict] = []
     seen: set[str] = set()
 
     def node(id_: str, label: str, kind: str) -> None:
+        assert id_, "id_ must be non-empty"
+        assert kind in _COLORS, "kind must be a known node type"
         if id_ not in seen:
-            nodes.append({"id": id_, "label": label, "type": kind,
-                          "color": _COLORS[kind], "r": _RADII[kind]})
+            nodes.append(
+                {"id": id_, "label": label, "type": kind, "color": _COLORS[kind], "r": _RADII[kind]}
+            )
             seen.add(id_)
 
     def edge(src: str, tgt: str, kind: str = "owns") -> None:
+        assert src and tgt, "src and tgt must be non-empty"
+        assert kind, "kind must be non-empty"
         edges.append({"source": src, "target": tgt, "kind": kind})
 
     node("global", "Global", "global")
@@ -348,7 +358,7 @@ loop();
 
 
 def _generate_html(config: Config) -> str:
+    assert config is not None, "config must not be None"
+    assert isinstance(config, Config), "config must be a Config"
     graph = _build_graph(config)
     return _HTML_TEMPLATE.format(data=json.dumps(graph))
-
-

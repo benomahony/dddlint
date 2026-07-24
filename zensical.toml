@@ -1,0 +1,12 @@
+[project]
+site_name = "dddlint"
+site_url = "https://benomahony.github.io/dddlint"
+site_description = "Polyglot ubiquitous language linter for codebases and coding agents"
+site_author = "benomahony"
+copyright = "&copy; 2026 benomahony"
+docs_dir = "docs"
+site_dir = "site"
+use_directory_urls = true
+
+[project.theme]
+variant = "modern"
