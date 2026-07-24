@@ -9,6 +9,10 @@ class SynonymGroup(BaseModel):
     aliases: list[str] = []
 
 
+class LanguageDef(BaseModel):
+    extensions: list[str] = []
+
+
 class Context(BaseModel):
     name: str
     include: list[str]
@@ -23,6 +27,16 @@ class Config(BaseModel):
     synonyms: list[SynonymGroup] = []
     domains: list[Context] = []
     contexts: list[Context] = []
+    languages: dict[str, LanguageDef] = {}
+
+    def extension_map(self) -> dict[str, str]:
+        assert isinstance(self.languages, dict), "languages must be a mapping"
+        out: dict[str, str] = {}
+        for name, spec in self.languages.items():
+            for ext in spec.extensions:
+                assert ext.startswith("."), f"extension '{ext}' must start with '.'"
+                out[ext] = name
+        return out
 
 
 def load_config(path: Path) -> Config:

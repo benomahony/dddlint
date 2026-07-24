@@ -21,3 +21,16 @@ def test_load_config_empty_file_uses_defaults(tmp_path: Path):
     config = load_config(path)
     assert config.forbidden == []
     assert config.enforce_canonical is True
+
+
+def test_config_extension_map_registers_custom_languages(tmp_path: Path):
+    path = tmp_path / "dddlint.yaml"
+    path.write_text("languages:\n  svelte:\n    extensions: ['.svelte', '.svlt']\n")
+    config = load_config(path)
+    assert config.extension_map() == {".svelte": "svelte", ".svlt": "svelte"}
+
+
+def test_config_extension_map_empty_by_default():
+    from dddlint.config import Config
+
+    assert Config().extension_map() == {}
