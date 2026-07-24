@@ -7,18 +7,19 @@ SKIP = {".git", ".venv", "node_modules", "__pycache__", "target", "dist", "build
 
 
 def _ignore_spec(root: Path, exclude: list[str]) -> pathspec.PathSpec:
-    assert isinstance(root, Path), "root must be a Path object"
-    assert isinstance(exclude, list), "exclude must be a list"
+    assert all(isinstance(p, str) for p in exclude), "exclude patterns must be strings"
     lines = list(exclude)
     gitignore = root / ".gitignore"
     if gitignore.exists():
         lines += gitignore.read_text().splitlines()
-    return pathspec.PathSpec.from_lines("gitwildmatch", lines)
+    spec = pathspec.PathSpec.from_lines("gitwildmatch", lines)
+    assert isinstance(spec, pathspec.PathSpec), "must build a valid PathSpec"
+    return spec
 
 
 def source_files(root: Path, exclude: list[str]) -> Iterator[Path]:
-    assert isinstance(root, Path), "root must be a Path object"
-    assert isinstance(exclude, list), "exclude must be a list"
+    assert root.is_dir(), "root must be an existing directory to walk"
+    assert all(isinstance(p, str) for p in exclude), "exclude patterns must be strings"
     spec = _ignore_spec(root, exclude)
     for path in root.rglob("*"):
         if not path.is_file() or SKIP & set(path.parts):
