@@ -1,10 +1,35 @@
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import pytest
 
-from dddlint.extract import definitions, language_for
+from dddlint.extract import _flatten, definitions, language_for
 
 pytestmark = pytest.mark.unit
+
+
+@dataclass
+class _Span:
+    start_line: int = 0
+
+
+@dataclass
+class _Node:
+    name: str
+    kind: str = "Class"
+    doc_comment: str | None = None
+    span: _Span = field(default_factory=_Span)
+    children: list["_Node"] = field(default_factory=list)
+
+
+def test_flatten_preorder_depth_first():
+    tree = [
+        _Node("A", children=[_Node("A1"), _Node("A2")]),
+        _Node("B"),
+    ]
+    out: list = []
+    _flatten(tree, Path("x.py"), [], out)
+    assert [d.name for d in out] == ["A", "A1", "A2", "B"]
 
 
 def test_language_for_prefers_extra_override(tmp_path: Path):

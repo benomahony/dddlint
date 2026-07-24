@@ -1,3 +1,4 @@
+from collections import deque
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
@@ -33,9 +34,9 @@ def _flatten(
 ) -> None:
     assert path is not None, "path must not be None"
     assert isinstance(out, list), "out must be a list"
-    stack: list[Any] = list(items)
+    stack: deque[Any] = deque(items)
     while stack:
-        item = stack.pop(0)
+        item = stack.popleft()
         kind = _kind_name(item.kind)
         if item.name and kind in DEFINITION_KINDS:
             line = item.span.start_line
@@ -43,7 +44,7 @@ def _flatten(
             col = line_text.find(item.name)
             out.append(Definition(item.name, kind, path, line, max(col, 0), item.doc_comment))
         if item.children:
-            stack[:0] = list(item.children)
+            stack.extendleft(reversed(item.children))
 
 
 def language_for(path: Path, extra: dict[str, str]) -> str | None:
