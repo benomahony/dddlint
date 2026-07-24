@@ -9,11 +9,11 @@ from . import __version__
 from .check import Finding, check
 from .config import Config, load_config
 from .config_check import check_config
+from .discover import source_files
 from .extract import Definition, definitions, language_for
 
 logger = logging.getLogger(__name__)
 
-SKIP = {".git", ".venv", "node_modules", "__pycache__", "target", "dist", "build"}
 DEFAULT_CONFIG = Path("dddlint.yaml")
 
 SEVERITY: dict[str, types.DiagnosticSeverity] = {
@@ -54,9 +54,7 @@ def _scan(ls: DddlintServer) -> None:
 
     extra = settings.extension_map()
     collected: list[Definition] = []
-    for path in root.rglob("*"):
-        if not path.is_file() or SKIP & set(path.parts):
-            continue
+    for path in source_files(root, settings.exclude):
         lang = language_for(path, extra)
         if lang is None:
             continue

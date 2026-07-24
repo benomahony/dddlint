@@ -94,6 +94,16 @@ def test_scan_without_config_uses_defaults(tmp_path: Path):
     assert server.ddd_findings == {}
 
 
+def test_scan_skips_gitignored_files(tmp_path: Path):
+    (tmp_path / "dddlint.yaml").write_text("forbidden: [manager]\n")
+    (tmp_path / ".gitignore").write_text("generated/\n")
+    (tmp_path / "generated").mkdir()
+    (tmp_path / "generated" / "bad.py").write_text("class OrderManager:\n    pass\n")
+    server = RecordingServer(tmp_path.as_uri())
+    _scan(server)
+    assert server.ddd_findings == {}
+
+
 def test_did_open_and_did_save_trigger_scan(tmp_path: Path):
     _write_project(tmp_path)
     server = RecordingServer(tmp_path.as_uri())
