@@ -34,3 +34,10 @@ def test_config_extension_map_empty_by_default():
     from dddlint.config import Config
 
     assert Config().extension_map() == {}
+
+
+def test_load_config_rejects_non_mapping_root(tmp_path: Path):
+    path = tmp_path / "dddlint.yaml"
+    path.write_text("- just\n- a\n- list\n")
+    with pytest.raises(AssertionError, match="YAML mapping"):
+        load_config(path)

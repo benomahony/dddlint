@@ -31,16 +31,17 @@ class Config(BaseModel):
     languages: dict[str, LanguageDef] = {}
 
     def extension_map(self) -> dict[str, str]:
-        assert isinstance(self.languages, dict), "languages must be a mapping"
         out: dict[str, str] = {}
         for name, spec in self.languages.items():
             for ext in spec.extensions:
                 assert ext.startswith("."), f"extension '{ext}' must start with '.'"
                 out[ext] = name
+        assert all(out.values()), "every extension must map to a non-empty language name"
         return out
 
 
 def load_config(path: Path) -> Config:
-    assert path is not None, "path must not be None"
-    assert isinstance(path, Path), "path must be a Path object"
-    return Config.model_validate(yaml.safe_load(path.read_text()) or {})
+    data = yaml.safe_load(path.read_text()) or {}
+    assert isinstance(data, dict), "config root must be a YAML mapping, not a list or scalar"
+    assert data.get("similarity_threshold", 1.0) >= 0.0, "similarity_threshold must be non-negative"
+    return Config.model_validate(data)
