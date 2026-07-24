@@ -24,6 +24,7 @@ class Config(BaseModel):
     similarity_threshold: float = 0.85
     enforce_canonical: bool = True
     forbidden: list[str] = []
+    exclude: list[str] = []
     synonyms: list[SynonymGroup] = []
     domains: list[Context] = []
     contexts: list[Context] = []

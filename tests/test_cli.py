@@ -43,6 +43,16 @@ def test_lint_uses_custom_language_extension(tmp_path: Path):
     assert "forbidden" in result.stdout
 
 
+def test_lint_skips_gitignored_files(tmp_path: Path):
+    (tmp_path / "dddlint.yaml").write_text("forbidden: [manager]\n")
+    (tmp_path / ".gitignore").write_text("generated/\n")
+    (tmp_path / "generated").mkdir()
+    (tmp_path / "generated" / "bad.py").write_text("class OrderManager:\n    pass\n")
+    result = runner.invoke(app, ["lint", str(tmp_path), "--config", str(tmp_path / "dddlint.yaml")])
+    assert result.exit_code == 0
+    assert "no findings" in result.stdout
+
+
 def test_resolve_defaults_to_cwd_and_default_config(tmp_path: Path):
     root, config = _resolve(None, None)
     assert root == Path.cwd()

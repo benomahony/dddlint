@@ -8,6 +8,7 @@ from rich.console import Console
 from .check import Finding, check
 from .config import load_config
 from .config_check import check_config
+from .discover import source_files
 from .extract import Definition, definitions, language_for
 
 app = typer.Typer(
@@ -40,7 +41,6 @@ def _cli(
     assert app is not None, "app must be initialized"
 
 
-SKIP = {".git", ".venv", "node_modules", "__pycache__", "target", "dist", "build"}
 DEFAULT_CONFIG = Path("dddlint.yaml")
 
 RULE_STYLE: dict[str, str] = {
@@ -94,9 +94,7 @@ def lint(
     settings = load_config(config)
     extra = settings.extension_map()
     collected: list[Definition] = []
-    for path in root.rglob("*"):
-        if not path.is_file() or SKIP & set(path.parts):
-            continue
+    for path in source_files(root, settings.exclude):
         language = language_for(path, extra)
         if language is None:
             continue
