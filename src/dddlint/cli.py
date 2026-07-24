@@ -20,12 +20,12 @@ console = Console()
 
 
 def _version(value: bool = False) -> bool:
-    assert isinstance(value, bool), "value must be a bool"
     if not value:
         return value
     from . import __version__
 
     assert __version__, "version string must be non-empty"
+    assert __version__[0].isdigit(), "version must start with a digit"
     typer.echo(__version__)
     raise typer.Exit()
 
@@ -37,8 +37,8 @@ def _cli(
     ] = False,
 ) -> None:
     """Polyglot ubiquitous language linter for codebases and coding agents."""
-    assert isinstance(version, bool), "version flag must be a bool"
-    assert app is not None, "app must be initialized"
+    assert version is False, "version is handled by the eager callback before the body runs"
+    assert app.registered_commands, "CLI must have registered commands"
 
 
 DEFAULT_CONFIG = Path("dddlint.yaml")
@@ -54,20 +54,20 @@ RULE_STYLE: dict[str, str] = {
 
 
 def _resolve(root: Path | None, config: Path | None) -> tuple[Path, Path]:
-    assert root is None or isinstance(root, Path), "root must be a Path or None"
-    assert config is None or isinstance(config, Path), "config must be a Path or None"
     if root is None:
         root = Path.cwd()
     if config is None:
         config = root / DEFAULT_CONFIG
         if not config.exists():
             config = Path.cwd() / DEFAULT_CONFIG
+    assert isinstance(root, Path), "root must be resolved to a concrete Path"
+    assert config.name, "resolved config must have a filename"
     return root, config
 
 
 def _print_findings(findings: list[Finding]) -> None:
-    assert findings is not None, "findings must not be None"
-    assert isinstance(findings, list), "findings must be a list"
+    assert all(f.line >= 0 for f in findings), "findings must have non-negative lines"
+    assert all(f.rule for f in findings), "every finding must carry a rule tag"
     by_file: dict[Path, list[Finding]] = defaultdict(list)
     for f in findings:
         by_file[f.path].append(f)
@@ -89,7 +89,6 @@ def lint(
 ) -> None:
     """Lint a codebase for DDD ubiquitous language violations."""
     root, config = _resolve(root, config)
-    assert isinstance(root, Path), "resolved root must be a Path"
     assert config.name, "config path must have a name"
     settings = load_config(config)
     extra = settings.extension_map()
@@ -101,6 +100,7 @@ def lint(
         collected.extend(definitions(path, language))
 
     findings = check_config(settings, config) + check(collected, settings)
+    assert all(f.path for f in findings), "every finding must reference a file"
     if findings:
         _print_findings(findings)
         n = len(findings)
@@ -131,10 +131,10 @@ def html(
     from .view import _generate_html
 
     root, config = _resolve(root, config)
-    assert isinstance(root, Path), "resolved root must be a Path"
     assert config.name, "config path must have a name"
     settings = load_config(config)
     path = _write_temp_html(_generate_html(settings))
+    assert path.endswith(".html"), "graph must be written to an .html file"
     webbrowser.open(f"file://{path}")
 
 
@@ -143,8 +143,8 @@ def lsp(
     root: Annotated[Path | None, typer.Argument()] = None,
 ) -> None:
     """Start the LSP server (stdio transport)."""
-    assert root is None or isinstance(root, Path), "root must be a Path or None"
     from .server import main as server_main
 
     assert callable(server_main), "server entrypoint must be callable"
+    assert server_main.__name__ == "main", "must import the server main entrypoint"
     server_main()
