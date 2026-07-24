@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 from lsprotocol import types
 from pygls.lsp.server import LanguageServer
 
+from . import __version__
 from .check import Finding, check
 from .config import Config, load_config
 from .config_check import check_config
@@ -24,7 +25,7 @@ SEVERITY: dict[str, types.DiagnosticSeverity] = {
 
 class DddlintServer(LanguageServer):
     def __init__(self) -> None:
-        super().__init__("dddlint", "v0.1.0")
+        super().__init__("dddlint", __version__)
         self.ddd_findings: dict[str, list[Finding]] = {}
         assert isinstance(self.ddd_findings, dict), "findings must be a dict"
         assert self.ddd_findings == {}, "findings must start empty"

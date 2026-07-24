@@ -18,6 +18,12 @@ from dddlint.server import (
 pytestmark = pytest.mark.unit
 
 
+def test_server_version_tracks_package_version():
+    from dddlint import __version__
+
+    assert DddlintServer().version == __version__
+
+
 class RecordingServer(DddlintServer):
     def __init__(self, root_uri: str | None) -> None:
         super().__init__()
