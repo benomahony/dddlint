@@ -6,17 +6,16 @@ from .config import Config, Context, SynonymGroup
 
 
 def _alias_map(synonyms: list[SynonymGroup]) -> dict[str, str]:
-    assert synonyms is not None, "synonyms must not be None"
-    assert isinstance(synonyms, list), "synonyms must be a list"
-    return {alias.lower(): g.canonical.lower() for g in synonyms for alias in g.aliases}
+    result = {alias.lower(): g.canonical.lower() for g in synonyms for alias in g.aliases}
+    assert all(k == k.lower() for k in result), "alias keys must be lowercased"
+    assert all(v == v.lower() for v in result.values()), "canonicals must be lowercased"
+    return result
 
 
 def _forbidden_canonical_clashes(config: Config, path: Path) -> list[Finding]:
-    assert config is not None, "config must not be None"
-    assert isinstance(path, Path), "path must be a Path object"
     forbidden = {t.lower() for t in config.forbidden}
     canonicals = {g.canonical.lower() for g in config.synonyms}
-    return [
+    out = [
         Finding(
             path,
             0,
@@ -26,11 +25,12 @@ def _forbidden_canonical_clashes(config: Config, path: Path) -> list[Finding]:
         )
         for term in forbidden & canonicals
     ]
+    assert all(f.line == 0 for f in out), "config findings must anchor to line 0"
+    assert all(f.rule == "config:forbidden-canonical-clash" for f in out), "wrong rule tag"
+    return out
 
 
 def _alias_conflicts(config: Config, path: Path) -> list[Finding]:
-    assert config is not None, "config must not be None"
-    assert isinstance(path, Path), "path must be a Path object"
     scopes: list[tuple[str, list[SynonymGroup]]] = [("global", config.synonyms)]
     for s in config.domains:
         scopes.append((f"domain:{s.name}", s.synonyms))
@@ -55,12 +55,13 @@ def _alias_conflicts(config: Config, path: Path) -> list[Finding]:
                 )
             else:
                 seen[alias] = (scope_name, canonical)
+    assert all(f.rule == "config:alias-conflict" for f in out), "wrong rule tag"
+    assert all(f.path == path for f in out), "findings must reference the config path"
     return out
 
 
 def _duplicate_names(config: Config, path: Path) -> list[Finding]:
-    assert config is not None, "config must not be None"
-    assert isinstance(path, Path), "path must be a Path object"
+    assert config.similarity_threshold >= 0.0, "similarity_threshold must be non-negative"
     out: list[Finding] = []
     all_scopes: list[Context] = config.domains + config.contexts
     for i, a in enumerate(all_scopes):
@@ -76,14 +77,18 @@ def _duplicate_names(config: Config, path: Path) -> list[Finding]:
                         f"'{a.name}' and '{b.name}' look like the same domain/context",
                     )
                 )
+    assert all(f.rule == "config:duplicate-name" for f in out), "wrong rule tag"
     return out
 
 
 def check_config(config: Config, path: Path) -> list[Finding]:
-    assert config is not None, "config must not be None"
-    assert isinstance(path, Path), "path must be a Path object"
-    return (
+    result = (
         _forbidden_canonical_clashes(config, path)
         + _alias_conflicts(config, path)
         + _duplicate_names(config, path)
     )
+    assert all(f.rule.startswith("config:") for f in result), (
+        "config findings must use config: rules"
+    )
+    assert all(f.line == 0 for f in result), "config findings anchor to line 0"
+    return result
