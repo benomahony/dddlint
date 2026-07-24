@@ -22,13 +22,13 @@ class Finding:
 
 
 def _apply_fix(name: str, old_token: str, new_token: str) -> str:
-    assert name and old_token, "name and old_token must be non-empty"
-    assert new_token is not None, "new_token must not be None"
+    assert old_token, "old_token must be non-empty; an empty pattern matches everywhere"
+    assert name, "name must be non-empty to rewrite"
 
     def _recase(m: re.Match) -> str:
-        assert m is not None, "match must not be None"
         s = m.group()
-        assert s, "matched text must be non-empty"
+        assert s, "matched token must be non-empty"
+        assert new_token, "canonical replacement must be non-empty"
         if s.isupper():
             return new_token.upper()
         if s[0].isupper():
@@ -39,24 +39,25 @@ def _apply_fix(name: str, old_token: str, new_token: str) -> str:
 
 
 def tokenise(name: str) -> tuple[str, ...]:
-    assert name is not None, "name must not be None"
-    assert isinstance(name, str), "name must be a string"
-    return tuple(p.lower() for p in re.split(_BOUNDARY, name) if p)
+    tokens = tuple(p.lower() for p in re.split(_BOUNDARY, name) if p)
+    assert all(t == t.lower() for t in tokens), "every token must be lowercased"
+    assert all(tokens), "tokens must be non-empty"
+    return tokens
 
 
 def _scoped(context: Context, path: Path) -> bool:
-    assert context is not None, "context must not be None"
-    assert isinstance(path, Path), "path must be a Path object"
+    assert isinstance(path, Path), "path must be a Path, not a str"
+    assert isinstance(context.include, list), "context include must be a list of patterns"
     return any(fnmatch(str(path), pattern) for pattern in context.include)
 
 
 def _alias_map(groups: list[SynonymGroup]) -> dict[str, str]:
-    assert groups is not None, "groups must not be None"
-    assert isinstance(groups, list), "groups must be a list"
     out: dict[str, str] = {}
     for group in groups:
         for alias in group.aliases:
             out[alias.lower()] = group.canonical
+    assert all(k == k.lower() for k in out), "alias keys must be lowercased for matching"
+    assert all(out.values()), "every alias must map to a non-empty canonical"
     return out
 
 
@@ -66,8 +67,8 @@ def _check_one(
     aliases: dict[str, str],
     enforce_canonical: bool,
 ) -> list[Finding]:
-    assert definition is not None, "definition must not be None"
-    assert isinstance(forbidden, set), "forbidden must be a set"
+    assert isinstance(forbidden, set), "forbidden must be a set for O(1) membership"
+    assert definition.name, "definition must have a non-empty name to tokenise"
     out: list[Finding] = []
     for token in tokenise(definition.name):
         if token in forbidden:
@@ -98,8 +99,8 @@ def _check_one(
 
 
 def check(definitions: list[Definition], config: Config) -> list[Finding]:
-    assert definitions is not None, "definitions must not be None"
-    assert config is not None, "config must not be None"
+    assert all(d.line >= 0 for d in definitions), "definition lines must be non-negative"
+    assert all(d.name for d in definitions), "every definition must have a name"
     out: list[Finding] = []
     base_forbidden = {t.lower() for t in config.forbidden}
     base_aliases = _alias_map(config.synonyms)
