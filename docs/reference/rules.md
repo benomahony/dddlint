@@ -80,3 +80,31 @@ rules = {f.rule for f in check(defs, Config())}
 
 assert "drift" in rules
 ```
+
+## Config rules
+
+Checked against `dddlint.yaml` on every run so a broken vocabulary is caught
+before it hides real findings.
+
+| Rule | Severity | Description |
+|---|---|---|
+| `config:forbidden-canonical-clash` | error | A term is both `forbidden` and a canonical synonym |
+| `config:alias-conflict` | warning | The same alias maps to different canonicals in different scopes |
+| `config:duplicate-name` | info | Two domains or contexts have names more similar than `similarity_threshold` |
+
+```python
+from pathlib import Path
+
+from dddlint.config import Config, SynonymGroup
+from dddlint.config_check import check_config
+
+config = Config(
+    forbidden=["order"],
+    synonyms=[SynonymGroup(canonical="order", aliases=["purchase"])],
+)
+
+findings = check_config(config, Path("dddlint.yaml"))
+rules = {f.rule for f in findings}
+
+assert "config:forbidden-canonical-clash" in rules
+```
