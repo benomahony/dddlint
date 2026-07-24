@@ -8,6 +8,7 @@ authors = [{ name = "benomahony" }]
 dependencies = [
     "lsprotocol>=2025.0.0",
     "mcp>=1.28.1",
+    "pathspec>=0.12.1",
     "pydantic>=2.13.4",
     "pygls>=2.1.1",
     "pyyaml>=6.0.3",

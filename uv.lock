@@ -557,6 +557,7 @@ source = { editable = "." }
 dependencies = [
     { name = "lsprotocol" },
     { name = "mcp" },
+    { name = "pathspec" },
     { name = "pydantic" },
     { name = "pygls" },
     { name = "pyyaml" },
@@ -588,6 +589,7 @@ dev = [
 requires-dist = [
     { name = "lsprotocol", specifier = ">=2025.0.0" },
     { name = "mcp", specifier = ">=1.28.1" },
+    { name = "pathspec", specifier = ">=0.12.1" },
     { name = "pydantic", specifier = ">=2.13.4" },
     { name = "pygls", specifier = ">=2.1.1" },
     { name = "pyyaml", specifier = ">=6.0.3" },
