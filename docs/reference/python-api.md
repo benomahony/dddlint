@@ -67,3 +67,51 @@ Frozen dataclass describing one extracted name.
 | `line` | int | 0-based line of the definition |
 | `col` | int | 0-based column of the name (default `0`) |
 | `doc` | str \| None | Doc comment, if any (default `None`) |
+
+## `dddlint.check`
+
+### `check(definitions, config)`
+
+Run every code rule over `definitions` and return a flat list of `Finding`.
+
+### `tokenise(name)`
+
+Split an identifier into lowercase tokens on case and separator boundaries.
+This is the unit both rule matching and drift detection work on.
+
+```python
+from dddlint.check import tokenise
+
+assert tokenise("getUserById") == ("get", "user", "by", "id")
+assert tokenise("get_user_by_id") == ("get", "user", "by", "id")
+assert tokenise("HTTPServer") == ("http", "server")
+```
+
+### `Finding`
+
+Frozen dataclass describing one violation.
+
+| Field | Type | Description |
+|---|---|---|
+| `path` | Path | File the finding is in |
+| `line` | int | Line of the offending definition |
+| `name` | str | The definition name |
+| `rule` | str | Rule name — see the [rules reference](rules.md) |
+| `message` | str | Human-readable explanation |
+| `col` | int | Column of the name (default `0`) |
+| `fix` | str \| None | Suggested rename, for `alias` findings (default `None`) |
+
+## `dddlint.config`
+
+### `load_config(path)`
+
+Read and validate a `dddlint.yaml` into a `Config`. See the
+[configuration reference](config.md) for the schema and the `Config`,
+`SynonymGroup`, and `Context` models.
+
+## `dddlint.config_check`
+
+### `check_config(config, path)`
+
+Validate a `Config` for internal contradictions and return a list of `Finding`
+with `config:` rule names. Run automatically by `dddlint lint`.
