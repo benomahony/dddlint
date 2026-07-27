@@ -5,17 +5,43 @@ forbidden:
   - util
   - helper
   - manager
+  - wrapper
+  - handler
+  - impl
+  - misc
+  - common
+  - stuff
 
 synonyms:
   - canonical: finding
-    aliases: [violation, issue, error]
+    aliases: [violation, issue, error, problem]
   - canonical: definition
-    aliases: [symbol, declaration]
+    aliases: [symbol, declaration, identifier]
   - canonical: config
-    aliases: [settings, configuration]
+    aliases: [settings, configuration, options, opts]
+  - canonical: path
+    aliases: [filepath, fpath, dir, folder]
+  - canonical: diagnostic
+    aliases: [warning, marker, squiggle]
+  - canonical: token
+    aliases: [word, piece, fragment]
+  - canonical: graph
+    aliases: [chart, network]
+  - canonical: language
+    aliases: [lang, grammar, parser]
 
 contexts:
   - name: extraction
     include: ["**/extract.py"]
+    synonyms:
+      - canonical: definition
+        aliases: [node, entity, decl]
+      - canonical: kind
+        aliases: [type, sort]
   - name: checking
     include: ["**/check.py", "**/config_check.py"]
+    synonyms:
+      - canonical: finding
+        aliases: [result, report, hit]
+      - canonical: rule
+        aliases: [ruletype]

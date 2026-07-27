@@ -98,3 +98,10 @@ repos:
         language: system
         pass_filenames: false
         require_serial: true
+      - id: dddlint
+        name: dddlint
+        entry: uv run dddlint lint src/dddlint
+        language: system
+        files: ^src/dddlint/
+        pass_filenames: false
+        require_serial: true
