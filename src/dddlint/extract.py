@@ -47,10 +47,10 @@ def _flatten(
             stack.extendleft(reversed(item.children))
 
 
-def language_for(path: Path, extra: dict[str, str]) -> str | None:
+def language_for(path: Path) -> str | None:
     assert path.name, "path must have a filename to detect a language"
-    assert all(k.startswith(".") for k in extra), "extra keys must be file suffixes like '.rs'"
-    return extra.get(path.suffix) or tslp.detect_language_from_path(str(path))
+    assert isinstance(path, Path), "path must be a Path object"
+    return tslp.detect_language_from_path(str(path))
 
 
 def definitions(path: Path, language: str) -> list[Definition]:

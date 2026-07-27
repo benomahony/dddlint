@@ -32,17 +32,12 @@ def test_flatten_preorder_depth_first():
     assert [d.name for d in out] == ["A", "A1", "A2", "B"]
 
 
-def test_language_for_prefers_extra_override(tmp_path: Path):
-    path = tmp_path / "x.weird"
-    assert language_for(path, {".weird": "python"}) == "python"
-
-
 def test_language_for_detects_from_suffix(tmp_path: Path):
-    assert language_for(tmp_path / "x.py", {}) == "python"
+    assert language_for(tmp_path / "x.py") == "python"
 
 
 def test_language_for_unknown_suffix_returns_none(tmp_path: Path):
-    assert language_for(tmp_path / "x.unknownext", {}) is None
+    assert language_for(tmp_path / "x.unknownext") is None
 
 
 def test_definitions_extracts_nested_defs(tmp_path: Path):

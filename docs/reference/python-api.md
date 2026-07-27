@@ -21,7 +21,7 @@ from dddlint.extract import definitions, language_for
 source = Path(mkdtemp()) / "repo.py"
 source.write_text("class ClientRepository:\n    pass\n")
 
-language = language_for(source, {})
+language = language_for(source)
 defs = definitions(source, language)
 
 config = Config(synonyms=[SynonymGroup(canonical="customer", aliases=["client"])])
@@ -34,19 +34,18 @@ assert findings[0].rule == "alias"
 
 ## `dddlint.extract`
 
-### `language_for(path, extra)`
+### `language_for(path)`
 
-Return the tree-sitter language name for `path`, or `None` if it cannot be
-detected. `extra` is a `dict[str, str]` mapping a file suffix to a language
-name — pass `{}` to rely purely on auto-detection.
+Return the tree-sitter language name auto-detected from `path`, or `None` if it
+cannot be detected.
 
 ```python
 from pathlib import Path
 
 from dddlint.extract import language_for
 
-assert language_for(Path("main.rs"), {}) == "rust"
-assert language_for(Path("data.unknownext"), {}) is None
+assert language_for(Path("main.rs")) == "rust"
+assert language_for(Path("data.unknownext")) is None
 ```
 
 ### `definitions(path, language)`

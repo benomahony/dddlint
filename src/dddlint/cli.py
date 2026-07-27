@@ -91,10 +91,9 @@ def lint(
     root, config = _resolve(root, config)
     assert config.name, "config path must have a name"
     settings = load_config(config)
-    extra = settings.extension_map()
     collected: list[Definition] = []
     for path in source_files(root, settings.exclude):
-        language = language_for(path, extra)
+        language = language_for(path)
         if language is None:
             continue
         collected.extend(definitions(path, language))

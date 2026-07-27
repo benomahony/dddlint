@@ -52,10 +52,9 @@ def _scan(ls: DddlintServer) -> None:
     config_path = root / DEFAULT_CONFIG
     settings = load_config(config_path) if config_path.exists() else Config()
 
-    extra = settings.extension_map()
     collected: list[Definition] = []
     for path in source_files(root, settings.exclude):
-        lang = language_for(path, extra)
+        lang = language_for(path)
         if lang is None:
             continue
         try:
