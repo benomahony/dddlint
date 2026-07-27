@@ -573,6 +573,7 @@ dev = [
     { name = "bump-my-version" },
     { name = "cliqa" },
     { name = "deptry" },
+    { name = "mockbuster" },
     { name = "prek" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -605,6 +606,7 @@ dev = [
     { name = "bump-my-version", specifier = ">=1.4.1" },
     { name = "cliqa", specifier = ">=0.1.5" },
     { name = "deptry", specifier = ">=0.25.1" },
+    { name = "mockbuster", specifier = ">=0.1.4" },
     { name = "prek", specifier = ">=0.4.10" },
     { name = "pytest", specifier = ">=8.0" },
     { name = "pytest-cov", specifier = ">=7.1.0" },
@@ -1252,6 +1254,20 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/d6/54/cfe61301667036ec958cb99bd3efefba235e65cdeb9c84d24a8293ba1d90/mdurl-0.1.2.tar.gz", hash = "sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba", size = 8729, upload-time = "2022-08-14T12:40:10.846Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl", hash = "sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8", size = 9979, upload-time = "2022-08-14T12:40:09.779Z" },
+]
+
+[[package]]
+name = "mockbuster"
+version = "0.1.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "mcp" },
+    { name = "rich" },
+    { name = "typer" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ba/b6/e270f5e06f474cd1384874d5440a113a589d0297c764af9c60aa9ad4496d/mockbuster-0.1.4.tar.gz", hash = "sha256:58a01433182a56914b98422d5d5b0783b138145421dff244289a3889acc10da1", size = 206978, upload-time = "2026-06-18T17:57:43.545Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4b/4d/4c4084a1ccbeed49f42e553db97676adca2357fd8511356a4a6ee9a88722/mockbuster-0.1.4-py3-none-any.whl", hash = "sha256:eef70d6e0eea4c9e28b6c17879bb2476b4ad4fc2713dd81177b9d735be85dfe0", size = 11421, upload-time = "2026-06-18T17:57:42.533Z" },
 ]
 
 [[package]]

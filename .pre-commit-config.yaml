@@ -92,3 +92,9 @@ repos:
         language: system
         pass_filenames: false
         require_serial: true
+      - id: mockbuster
+        name: mockbuster
+        entry: uv run mockbuster
+        language: system
+        pass_filenames: false
+        require_serial: true

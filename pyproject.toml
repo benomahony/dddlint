@@ -125,6 +125,7 @@ dev = [
     "bump-my-version>=1.4.1",
     "cliqa>=0.1.5",
     "deptry>=0.25.1",
+    "mockbuster>=0.1.4",
     "prek>=0.4.10",
     "pytest>=8.0",
     "pytest-cov>=7.1.0",
