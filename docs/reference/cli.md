@@ -66,9 +66,9 @@ spelling. Takes the same `ROOT` and `--config` arguments as `lint` and emits the
 
 ```text
 4 names
-────────────────────────────────
-  0.94  near-synonym      fetch_order, retrieve_purchase  same idea, unrelated words
-  0.11  context-outlier   charge                          reads like core vocabulary
+──────────────────────────────────────────────────────────────────
+  1.00  near-synonym      fetch_order, retrieve_purchase  same idea, unrelated words: fetch_order, retrieve_purchase; pick one canonical term
+  0.50  context-outlier   fetch_order  reads like core vocabulary but lives in billing
 
 ◆ 2 insights
 ```
