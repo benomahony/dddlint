@@ -41,7 +41,7 @@ dddlint lsp
 Place `dddlint.yaml` at the project root. When a path is passed to `lint` or `html`, the config is looked up in that directory first, then falls back to the current working directory.
 
 ```yaml
-similarity_threshold: 0.85   # Jaccard threshold for drift detection
+similarity_threshold: 0.85   # how alike two domain or context names may be
 enforce_canonical: true       # flag alias terms in addition to forbidden ones
 
 # terms that must never appear in a definition name

@@ -69,12 +69,18 @@ Read only by [`dddlint map`](cli.md#map). `lint` and `lsp` never embed anything.
 | `model` | str | `sentence-transformers:all-MiniLM-L6-v2` | pydantic-ai embedding model, `provider:name` |
 | `dimensions` | int \| None | `None` | Truncate vectors to this width, `None` keeps the model's native size |
 | `batch_size` | int | `128` | Names embedded per request |
-| `cache` | Path | `.dddlint/embeddings.json` | Vector cache, relative paths resolve against `ROOT` |
-| `threshold` | float \| None | `None` | Cosine similarity above which names cluster, falls back to `similarity_threshold` |
+| `cache` | Path | `.dddlint/embeddings.json` | Vector cache, relative paths resolve against the config's directory |
+| `threshold` | float | `0.6` | Cosine similarity above which names cluster |
 | `outlier_margin` | float | `0.05` | How much closer a name must sit to another scope before it is called an outlier |
 
 The cache is keyed by model and dimensions, so changing either invalidates it
 rather than mixing vector spaces. Unchanged names are never re-embedded.
+
+`threshold` is a cosine on embedding vectors, a different scale from
+`similarity_threshold`, which compares scope names as strings. On this codebase
+the default model puts the median name pair at 0.20 and the closest pair at 0.86,
+so 0.6 groups genuine pairs while 0.5 starts chaining unrelated names together.
+Raise it if the map reports noise, lower it if every name sits alone.
 
 ```yaml title="dddlint.yaml"
 embeddings:
