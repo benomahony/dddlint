@@ -26,6 +26,9 @@ dddlint lint src/
 # report vocabulary insights from name embeddings
 dddlint map
 
+# same, plus an interactive scatter plot of the vocabulary
+dddlint map --html map.html
+
 # open an interactive language graph in the browser
 dddlint html
 
