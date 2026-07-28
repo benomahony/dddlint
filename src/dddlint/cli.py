@@ -1,3 +1,4 @@
+import asyncio
 from collections import defaultdict
 from pathlib import Path
 from typing import Annotated
@@ -6,10 +7,11 @@ import typer
 from rich.console import Console
 
 from .check import Finding, check
-from .config import load_config
+from .config import Config, load_config
 from .config_check import check_config
 from .discover import source_files
 from .extract import Definition, definitions, language_for
+from .insights import Insight, context_outliers, near_synonyms
 
 app = typer.Typer(
     add_completion=False,
@@ -113,6 +115,59 @@ def lint(
     else:
         console.print("[bold green]✔ no findings[/bold green]")
     raise typer.Exit(1 if findings else 0)
+
+
+INSIGHT_STYLE: dict[str, str] = {
+    "near-synonym": "bold magenta",
+    "context-outlier": "bold yellow",
+}
+
+
+def _vectors(names: list[str], settings: Config, root: Path) -> dict[str, list[float]]:
+    assert names, "there must be names to embed"
+    assert isinstance(root, Path), "root must be a Path to anchor the cache"
+    from .embed import embed_names
+
+    cache = settings.embeddings.cache
+    embeddings = settings.embeddings.model_copy(
+        update={"cache": cache if cache.is_absolute() else root / cache}
+    )
+    return asyncio.run(embed_names(names, embeddings))
+
+
+def _print_insights(insights: list[Insight]) -> None:
+    assert all(insight.rule for insight in insights), "every insight must carry a rule tag"
+    assert all(insight.names for insight in insights), "every insight must name something"
+    for insight in insights:
+        style = INSIGHT_STYLE.get(insight.rule, "bold white")
+        console.print(
+            f"  [dim]{insight.score:.2f}[/dim]  [{style}]{insight.rule:<16}[/{style}]"
+            f"  [bold]{', '.join(insight.names)}[/bold]  [dim]{insight.message}[/dim]"
+        )
+
+
+@app.command("map")
+def vocabulary_map(
+    root: Annotated[Path | None, typer.Argument()] = None,
+    config: Annotated[Path | None, typer.Option()] = None,
+) -> None:
+    """Report project-level vocabulary insights from name embeddings."""
+    root, config = _resolve(root, config)
+    assert config.name, "config path must have a name"
+    settings = load_config(config)
+    collected = _collect(root, settings.exclude)
+    assert all(d.name for d in collected), "every collected definition must have a name"
+    if not collected:
+        console.print("[bold yellow]no definitions found[/bold yellow]")
+        raise typer.Exit(0)
+    vectors = _vectors([d.name for d in collected], settings, root)
+    insights = near_synonyms(collected, vectors, settings) + context_outliers(
+        collected, vectors, settings
+    )
+    console.print(f"\n[bold white]{len(vectors)} names[/bold white]")
+    console.rule(style="dim")
+    _print_insights(insights)
+    console.print(f"\n[bold cyan]◆ {len(insights)} insights[/bold cyan]")
 
 
 def _write_temp_html(content: str) -> str:

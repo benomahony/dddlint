@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pytest
@@ -5,6 +6,7 @@ from typer.testing import CliRunner
 
 from dddlint import __version__
 from dddlint.cli import _resolve, app
+from dddlint.config import Embeddings
 
 pytestmark = pytest.mark.unit
 
@@ -71,3 +73,47 @@ def test_html_writes_and_opens_graph(tmp_path: Path):
         env={"BROWSER": "true"},
     )
     assert result.exit_code == 0
+
+
+CACHED_NAMES = {
+    "Invoice": [1.0, 0.0],
+    "charge": [0.99, 0.14],
+    "fetch_order": [0.0, 1.0],
+    "retrieve_purchase": [0.05, 0.99],
+}
+
+
+def _repo_with_warm_cache(tmp_path: Path) -> Path:
+    (tmp_path / "dddlint.yaml").write_text(
+        "contexts:\n"
+        "  - name: billing\n    include: ['**/billing/**']\n"
+        "  - name: core\n    include: ['**/core/**']\n"
+    )
+    (tmp_path / "src/billing").mkdir(parents=True)
+    (tmp_path / "src/core").mkdir(parents=True)
+    (tmp_path / "src/billing/a.py").write_text(
+        "class Invoice:\n    def charge(self) -> None: ...\n"
+    )
+    (tmp_path / "src/core/b.py").write_text(
+        "def fetch_order() -> None: ...\ndef retrieve_purchase() -> None: ...\n"
+    )
+    cache = tmp_path / ".dddlint/embeddings.json"
+    cache.parent.mkdir()
+    key = f"{Embeddings().model}/native"
+    cache.write_text(json.dumps({"key": key, "vectors": CACHED_NAMES}))
+    return tmp_path
+
+
+def test_map_reports_insights_from_the_cached_vectors(tmp_path: Path):
+    root = _repo_with_warm_cache(tmp_path)
+    result = runner.invoke(app, ["map", str(root), "--config", str(root / "dddlint.yaml")])
+    assert result.exit_code == 0
+    assert "4 names" in result.stdout
+    assert "near-synonym" in result.stdout
+
+
+def test_map_on_an_empty_tree_says_so(tmp_path: Path):
+    (tmp_path / "dddlint.yaml").write_text("")
+    result = runner.invoke(app, ["map", str(tmp_path), "--config", str(tmp_path / "dddlint.yaml")])
+    assert result.exit_code == 0
+    assert "no definitions" in result.stdout
