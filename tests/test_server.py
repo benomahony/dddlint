@@ -134,8 +134,7 @@ def test_code_action_offers_fix_at_cursor_line(tmp_path: Path):
     )
     actions = code_action(server, params)
     assert [action.title for action in actions] == [
-        "Rename 'ClientRepo' → 'CustomerRepo' everywhere (dddlint: alias)",
-        "Replace 'ClientRepo' → 'CustomerRepo' in this file only (dddlint: alias)",
+        "Rename 'ClientRepo' → 'CustomerRepo' everywhere (dddlint: alias)"
     ]
 
 
@@ -153,14 +152,11 @@ def test_code_action_hands_the_rename_to_the_language_server(tmp_path: Path):
         ),
         context=types.CodeActionContext(diagnostics=[]),
     )
-    delegating, in_file = code_action(server, params)
-    assert delegating.edit is None
+    (delegating,) = code_action(server, params)
+    assert delegating.edit is None, "dddlint must never rewrite the name itself"
     assert delegating.command is not None
     assert delegating.command.command == RENAME_COMMAND
     assert delegating.command.arguments == [uri, 3, 6, "CustomerRepo"]
-    assert in_file.edit is not None
-    changes = in_file.edit.changes or {}
-    assert changes[uri][0].new_text == "CustomerRepo"
 
 
 def test_rename_command_is_advertised_to_clients():

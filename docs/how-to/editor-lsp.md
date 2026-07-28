@@ -14,15 +14,13 @@ offers a one-click rename from an alias to its canonical term.
 - It publishes diagnostics on **file open** and **file save**.
 - Each run scans the **entire workspace**, so cross-file
   [drift](../reference/rules.md#drift) is always caught, not just the open file.
-- [Alias findings](../reference/rules.md#alias) carry two code actions, both
-  targeting the canonical term with case preserved (`ClientRepo` →
-  `CustomerRepo`, `get_client` → `get_customer`):
-  - **Rename everywhere** runs the `dddlint.rename` command, which your editor
-    forwards to the language server that owns the file. dddlint reads names in
-    306 languages but understands none of them well enough to find call sites,
-    so the rename belongs to the server that does. Needs the glue below.
-  - **Replace in this file only** applies a plain text edit to the definition.
-    Use it where no rename provider is attached; call sites are yours to fix.
+- [Alias findings](../reference/rules.md#alias) carry one code action, **Rename
+  everywhere**, targeting the canonical term with case preserved (`ClientRepo` →
+  `CustomerRepo`, `get_client` → `get_customer`). It runs the `dddlint.rename`
+  command, which your editor forwards to the language server that owns the file.
+  dddlint reads names in 306 languages but understands none of them well enough
+  to find call sites, so the rename belongs to the server that does, and dddlint
+  never edits the name itself. Needs the glue below.
 
 ## Wire up the rename
 
@@ -55,7 +53,10 @@ commands.registerCommand("dddlint.rename", async (uri, line, character, name) =>
 ```
 
 Editors with no hook for server commands (Helix today) get the message instead;
-their own rename keybinding on the flagged identifier does the same job.
+their own rename keybinding on the flagged identifier does the same job. Where
+no server offers rename at all, the diagnostic and the canonical term are all
+dddlint gives you: renaming a definition without its call sites is a worse
+outcome than leaving the code alone.
 
 The command to launch it over stdio is:
 
