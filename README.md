@@ -23,6 +23,9 @@ dddlint lint
 # lint a specific path
 dddlint lint src/
 
+# report vocabulary insights from name embeddings
+dddlint map
+
 # open an interactive language graph in the browser
 dddlint html
 
@@ -43,6 +46,11 @@ forbidden:
   - util
   - helper
   - manager
+
+# paths to skip, gitignore syntax, relative to this file's directory
+exclude:
+  - src/generated
+  - "**/*_pb2.py"
 
 # canonical terms and their aliases
 synonyms:
@@ -83,6 +91,17 @@ Global rules apply everywhere. Domain rules apply to matching paths. Context rul
 | `config:duplicate-name` | info | Two domains or contexts have suspiciously similar names |
 
 Config rules are checked against `dddlint.yaml` itself on every run.
+
+## Insights
+
+`dddlint map` embeds every definition name and compares meaning rather than tokens, catching what `drift` cannot. It always exits `0`, so it informs rather than gates.
+
+| Rule | Description |
+|---|---|
+| `near-synonym` | Names that mean the same thing while sharing no token |
+| `context-outlier` | A name whose vocabulary belongs to a different domain or context |
+
+Vectors are cached in `.dddlint/embeddings.json`, keyed by model and dimensions, so only new names are ever embedded. Configure the model under `embeddings` in `dddlint.yaml`.
 
 ## LSP
 
