@@ -45,6 +45,17 @@ def test_lint_skips_gitignored_files(tmp_path: Path):
     assert "no findings" in result.stdout
 
 
+def test_lint_of_a_subdirectory_honours_root_config_excludes(tmp_path: Path):
+    (tmp_path / "dddlint.yaml").write_text('forbidden: [manager]\nexclude: ["src/gen"]\n')
+    (tmp_path / "src" / "gen").mkdir(parents=True)
+    (tmp_path / "src" / "gen" / "bad.py").write_text("class OrderManager:\n    pass\n")
+    result = runner.invoke(
+        app, ["lint", str(tmp_path / "src"), "--config", str(tmp_path / "dddlint.yaml")]
+    )
+    assert result.exit_code == 0
+    assert "no findings" in result.stdout
+
+
 def test_resolve_defaults_to_cwd_and_default_config(tmp_path: Path):
     root, config = _resolve(None, None)
     assert root == Path.cwd()

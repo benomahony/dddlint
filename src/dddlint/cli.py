@@ -84,11 +84,12 @@ def _print_findings(findings: list[Finding]) -> None:
             )
 
 
-def _collect(root: Path, exclude: list[str]) -> list[Definition]:
+def _collect(root: Path, exclude: list[str], base: Path) -> list[Definition]:
     assert isinstance(root, Path), "root must be a Path to walk"
     assert isinstance(exclude, list), "exclude must be a list of patterns"
+    assert base.is_dir(), "exclude patterns must be anchored to an existing directory"
     collected: list[Definition] = []
-    for path in source_files(root, exclude):
+    for path in source_files(root, exclude, base):
         language = language_for(path)
         if language is None:
             continue
@@ -105,7 +106,7 @@ def lint(
     root, config = _resolve(root, config)
     assert config.name, "config path must have a name"
     settings = load_config(config)
-    collected = _collect(root, settings.exclude)
+    collected = _collect(root, settings.exclude, config.parent)
     findings = check_config(settings, config) + check(collected, settings)
     assert all(f.path for f in findings), "every finding must reference a file"
     if findings:
@@ -155,7 +156,7 @@ def vocabulary_map(
     root, config = _resolve(root, config)
     assert config.name, "config path must have a name"
     settings = load_config(config)
-    collected = _collect(root, settings.exclude)
+    collected = _collect(root, settings.exclude, config.parent)
     assert all(d.name for d in collected), "every collected definition must have a name"
     if not collected:
         console.print("[bold yellow]no definitions found[/bold yellow]")
