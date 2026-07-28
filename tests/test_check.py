@@ -118,6 +118,25 @@ def test_directional_markers_are_configurable():
     assert any(f.rule == "drift" for f in check(defs, Config(directional=[])))
 
 
+def test_forbidden_term_in_a_module_name_reports_its_own_rule():
+    defs = [Definition("file_utils", "Module", Path("file_utils.py"), 0)]
+    assert [f.rule for f in check(defs, Config(forbidden=["utils"]))] == ["forbidden:module"]
+
+
+def test_alias_in_a_package_name_offers_no_rename_of_the_source():
+    config = Config(synonyms=[SynonymGroup(canonical="customer", aliases=["client"])])
+    defs = [Definition("client", "Package", Path("client/__init__.py"), 0)]
+    assert [(f.rule, f.fix) for f in check(defs, config)] == [("alias:module", None)]
+
+
+def test_a_module_neither_duplicates_nor_drifts_against_what_it_holds():
+    defs = [
+        Definition("file_utils", "Module", Path("file_utils.py"), 0),
+        Definition("file_utils", "Function", Path("file_utils.py"), 3),
+    ]
+    assert not any(f.rule in {"duplicate", "drift"} for f in check(defs, Config()))
+
+
 def test_duplicate_flags_one_name_on_two_kinds():
     defs = [
         Definition("balance", "Method", Path("a.py"), 3),

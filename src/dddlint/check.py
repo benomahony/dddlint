@@ -5,7 +5,7 @@ from fnmatch import fnmatch
 from pathlib import Path
 
 from .config import Config, Context, SynonymGroup
-from .extract import Definition
+from .extract import PATH_KINDS, Definition
 
 _BOUNDARY = r"[-_\s]+|(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])"
 
@@ -82,6 +82,8 @@ def _check_one(
 ) -> list[Finding]:
     assert isinstance(forbidden, set), "forbidden must be a set for O(1) membership"
     assert definition.name, "definition must have a non-empty name to tokenise"
+    named = definition.kind in PATH_KINDS
+    tag = ":module" if named else ""
     out: list[Finding] = []
     for token in tokenise(definition.name):
         if token in forbidden:
@@ -90,7 +92,7 @@ def _check_one(
                     definition.path,
                     definition.line,
                     definition.name,
-                    "forbidden",
+                    f"forbidden{tag}",
                     f"uses banned term '{token}'",
                     col=definition.col,
                 )
@@ -102,10 +104,10 @@ def _check_one(
                     definition.path,
                     definition.line,
                     definition.name,
-                    "alias",
+                    f"alias{tag}",
                     f"'{token}' is not the canonical term, use '{canonical}'",
                     col=definition.col,
-                    fix=_apply_fix(definition.name, token, canonical),
+                    fix=None if named else _apply_fix(definition.name, token, canonical),
                 )
             )
     return out
@@ -151,7 +153,7 @@ def _duplicates(definitions: list[Definition], config: Config) -> list[Finding]:
     assert config.name_uniqueness, "only call this when uniqueness is enforced"
     owned: dict[tuple[str, str], list[Definition]] = defaultdict(list)
     for definition in definitions:
-        if _is_dunder(definition.name):
+        if _is_dunder(definition.name) or definition.kind in PATH_KINDS:
             continue
         owned[(scope_of(config, definition.path), definition.name)].append(definition)
     out: list[Finding] = []
@@ -195,7 +197,7 @@ def check(definitions: list[Definition], config: Config) -> list[Finding]:
     kinds: dict[tuple[str, ...], set[str]] = defaultdict(set)
     first: dict[tuple[str, ...], Definition] = {}
     for definition in definitions:
-        if _is_dunder(definition.name):
+        if _is_dunder(definition.name) or definition.kind in PATH_KINDS:
             continue
         key = tuple(sorted(tokenise(definition.name)))
         by_tokens[key].add(definition.name)

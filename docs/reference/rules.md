@@ -58,6 +58,33 @@ assert alias.fix == "CustomerRepository"
 assert "customer" in alias.message
 ```
 
+### forbidden:module and alias:module
+
+**Severity: error and warning.** The same two checks, run against the names in
+the path rather than in the source: every directory below the lint root and
+each module's filename. A package called `utils` says more about a missing
+bounded context than any single function name, and no definition inside it has
+to mention `utils` for that to be true.
+
+```python
+from pathlib import Path
+
+from dddlint.check import check
+from dddlint.config import Config
+from dddlint.extract import Definition
+
+config = Config(forbidden=["utils"])
+defs = [Definition("file_utils", "Module", Path("commons/utils/file_utils.py"), 0)]
+
+assert [f.rule for f in check(defs, config)] == ["forbidden:module"]
+```
+
+Path names are reported at line 1 of the module, or of the package `__init__.py`
+where there is one. They carry no `fix`, since renaming a file is not a text
+edit, and they are exempt from `duplicate` and `drift`: a module named after
+the one class it holds is a convention, not a collision. Emitted by
+[`dddlint lint`](cli.md#lint), which knows the tree it was pointed at.
+
 ### duplicate
 
 **Severity: warning.** One name is claimed by more than one definition inside
