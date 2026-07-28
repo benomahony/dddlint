@@ -201,7 +201,7 @@ def vocabulary_map(
     points = map_points(collected, vectors, settings)
     target = config.parent / "dddmap.html"
     target.write_text(_generate_scatter(points, insights))
-    console.print(f"[dim]map written to file://{target.resolve()}[/dim]")
+    console.print(f"[dim]map written to file://{target.resolve()}[/dim]", soft_wrap=True)
     webbrowser.open(f"file://{target.resolve()}")
 
 
