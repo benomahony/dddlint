@@ -13,6 +13,7 @@ empty file is valid and produces no findings.
 |---|---|---|---|
 | `similarity_threshold` | float | `0.85` | Ratio above which two domain/context names are flagged as duplicates |
 | `enforce_canonical` | bool | `true` | Flag alias terms in addition to forbidden ones |
+| `name_uniqueness` | bool | `true` | Flag a name claimed by more than one definition in the same context. Set `false` to let a variable and a method share a name |
 | `forbidden` | list[str] | `[]` | Terms that must never appear in a definition name |
 | `exclude` | list[str] | `[]` | Paths to skip, see [exclude patterns](#exclude-patterns) |
 | `synonyms` | list[[SynonymGroup](#synonymgroup)] | `[]` | Canonical terms and their aliases |

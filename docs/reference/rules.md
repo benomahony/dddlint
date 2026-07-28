@@ -58,6 +58,36 @@ assert alias.fix == "CustomerRepository"
 assert "customer" in alias.message
 ```
 
+### duplicate
+
+**Severity: warning.** One name is claimed by more than one definition inside
+the same context: two concepts wearing one word. Every sharer is reported, each
+message naming the others. Set `name_uniqueness: false` to allow it, for
+instance where a variable and a method deliberately share a name.
+
+Matching is on the exact name, and only within one context, since two bounded
+contexts owning the same word is what a bounded context is for. Dunder names are
+exempt. Collisions are scoped by [`domains` and `contexts`](config.md#scope), so
+an unscoped project treats the whole codebase as one context.
+
+```python
+from pathlib import Path
+
+from dddlint.check import check
+from dddlint.config import Config
+from dddlint.extract import Definition
+
+defs = [
+    Definition("balance", "Method", Path("account.py"), 3),
+    Definition("balance", "Variable", Path("ledger.py"), 9),
+]
+
+findings = [f for f in check(defs, Config()) if f.rule == "duplicate"]
+
+assert len(findings) == 2
+assert "Variable at ledger.py:10" in findings[0].message
+```
+
 ### drift
 
 **Severity: info.** The same concept is spelled several different ways across

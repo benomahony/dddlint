@@ -48,6 +48,7 @@ Place `dddlint.yaml` at the project root. When a path is passed to `lint` or `ht
 ```yaml
 similarity_threshold: 0.85   # how alike two domain or context names may be
 enforce_canonical: true       # flag alias terms in addition to forbidden ones
+name_uniqueness: true         # flag one name claimed by two definitions in a context
 
 # terms that must never appear in a definition name
 forbidden:
@@ -93,6 +94,7 @@ Global rules apply everywhere. Domain rules apply to matching paths. Context rul
 |---|---|---|
 | `forbidden` | error | A definition name contains a banned term |
 | `alias` | warning | A definition uses a non-canonical synonym, with a rename suggestion |
+| `duplicate` | warning | One name is claimed by more than one definition in the same context |
 | `drift` | info | The same concept is spelled multiple ways across the codebase |
 | `config:forbidden-canonical-clash` | error | A term is both forbidden and a canonical synonym |
 | `config:alias-conflict` | warning | The same alias maps to different canonicals in different scopes |
