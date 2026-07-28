@@ -143,3 +143,12 @@ def test_near_synonyms_ignores_names_chained_through_a_shared_word():
     vectors = {"_alias_map": EAST, "map_points": EAST_ISH}
     config = Config(embeddings=Embeddings(threshold=0.9))
     assert near_synonyms(definitions, vectors, config) == []
+
+
+def test_near_synonyms_score_averages_the_cluster_rather_than_its_weakest_pair():
+    definitions = [definition("fetch"), definition("retrieve"), definition("collect")]
+    vectors = {"fetch": EAST, "retrieve": EAST_ISH, "collect": [0.9, 0.44]}
+    config = Config(embeddings=Embeddings(threshold=0.9))
+    insights = near_synonyms(definitions, vectors, config)
+    assert len(insights) == 1
+    assert 0.9 < insights[0].score < 1.0

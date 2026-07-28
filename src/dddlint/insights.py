@@ -76,7 +76,8 @@ def near_synonyms(
         members = tuple(names[index] for index in group)
         if len(members) < 2 or _shares_a_token(members):
             continue
-        score = min(matrix[a][b] for a in group for b in group if a != b)
+        pairs = [matrix[a][b] for a in group for b in group if a != b]
+        score = sum(pairs) / len(pairs)
         out.append(
             Insight(
                 "near-synonym",
