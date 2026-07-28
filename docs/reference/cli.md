@@ -35,7 +35,11 @@ Config resolution: if `--config` is omitted, dddlint looks for `dddlint.yaml`
 in `ROOT`, then falls back to the current working directory.
 
 Directories skipped while scanning: `.git`, `.venv`, `node_modules`,
-`__pycache__`, `target`, `dist`, `build`.
+`__pycache__`, `target`, `dist`, `build`. On top of those, dddlint honours the
+config's [`exclude`](config.md#exclude-patterns) patterns and any `.gitignore`
+beside the config file. Both are matched relative to the config file's
+directory, so `dddlint lint src/billing` still respects patterns written
+relative to the project root.
 
 The config file itself is validated on every run (see the
 [config rules](rules.md#config-rules)).
@@ -46,6 +50,33 @@ The config file itself is validated on every run (see the
 |---|---|
 | `0` | No findings |
 | `1` | One or more findings (printed to stdout) |
+
+## `map`
+
+Report project-level vocabulary insights from name embeddings.
+
+```sh
+dddlint map [ROOT] [--config PATH]
+```
+
+Where `lint` compares names token by token, `map` embeds every definition name
+and compares meaning, which catches the pairs that share an idea but no
+spelling. Takes the same `ROOT` and `--config` arguments as `lint` and emits the
+[insights](rules.md#insights), ordered by score:
+
+```text
+4 names
+────────────────────────────────
+  0.94  near-synonym      fetch_order, retrieve_purchase  same idea, unrelated words
+  0.11  context-outlier   charge                          reads like core vocabulary
+
+◆ 2 insights
+```
+
+The first run downloads the model from
+[`embeddings.model`](config.md#embeddings) and writes vectors to
+`embeddings.cache`; later runs only embed names that are new. Always exits `0`,
+so it informs rather than gates. Prints `no definitions found` on an empty tree.
 
 ## `html`
 

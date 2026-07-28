@@ -439,6 +439,7 @@ _SCATTER_TEMPLATE = """\
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: #0d0f17; overflow: hidden; font-family: system-ui, sans-serif; }
   canvas { display: block; }
+  #hint { position: fixed; top: 1.5rem; right: 1.5rem; font-size: 0.72rem; color: #374151; }
   #legend { position: fixed; bottom: 1.5rem; left: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap; }
   .leg { display: flex; align-items: center; gap: 0.35rem; font-size: 0.72rem; color: #6b7280; }
   .dot { width: 10px; height: 10px; border-radius: 50%; }
@@ -453,6 +454,7 @@ _SCATTER_TEMPLATE = """\
 <body>
 <canvas id="c"></canvas>
 <div id="title">DDD Vocabulary Map</div>
+<div id="hint">scroll to zoom · drag to pan · zoom in for every name</div>
 <div id="legend"></div>
 <div id="caption">Names placed by embedding similarity, flattened with PCA. Distance is
 approximate: neighbours share meaning. Rings outline clusters; a ring in amber holds more
@@ -549,6 +551,21 @@ document.getElementById('legend').innerHTML = DATA.legend
   `<div class="leg"><div class="dot" style="background:#8a8a80"></div>noun</div>
    <div class="leg"><div class="tri"></div>verb</div>
    <div class="leg"><div class="dot" style="background:transparent;border:2px solid ${OUTLIER}"></div>outlier</div>`;
+
+let pan = null;
+canvas.addEventListener('mousedown', e => { pan = { ox: e.clientX - cam.x, oy: e.clientY - cam.y }; });
+canvas.addEventListener('mouseup', () => { pan = null; });
+canvas.addEventListener('mousemove', e => {
+  if (!pan) return;
+  cam.x = e.clientX - pan.ox;
+  cam.y = e.clientY - pan.oy;
+  draw();
+});
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  cam.zoom = Math.max(0.3, Math.min(6, cam.zoom * (e.deltaY < 0 ? 1.1 : 0.91)));
+  draw();
+}, { passive: false });
 
 draw();
 </script>
