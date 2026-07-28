@@ -82,6 +82,18 @@ def _print_findings(findings: list[Finding]) -> None:
             )
 
 
+def _collect(root: Path, exclude: list[str]) -> list[Definition]:
+    assert isinstance(root, Path), "root must be a Path to walk"
+    assert isinstance(exclude, list), "exclude must be a list of patterns"
+    collected: list[Definition] = []
+    for path in source_files(root, exclude):
+        language = language_for(path)
+        if language is None:
+            continue
+        collected.extend(definitions(path, language))
+    return collected
+
+
 @app.command()
 def lint(
     root: Annotated[Path | None, typer.Argument()] = None,
@@ -91,13 +103,7 @@ def lint(
     root, config = _resolve(root, config)
     assert config.name, "config path must have a name"
     settings = load_config(config)
-    collected: list[Definition] = []
-    for path in source_files(root, settings.exclude):
-        language = language_for(path)
-        if language is None:
-            continue
-        collected.extend(definitions(path, language))
-
+    collected = _collect(root, settings.exclude)
     findings = check_config(settings, config) + check(collected, settings)
     assert all(f.path for f in findings), "every finding must reference a file"
     if findings:

@@ -1,6 +1,9 @@
 similarity_threshold: 0.85
 enforce_canonical: true
 
+exclude:
+  - examples/**
+
 forbidden:
   - util
   - helper
