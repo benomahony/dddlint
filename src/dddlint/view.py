@@ -1,6 +1,9 @@
 import json
+from collections import Counter, defaultdict
 
+from .cluster import hull
 from .config import Config
+from .insights import Insight, Point
 
 _COLORS = {
     "global": "#7c3aed",
@@ -363,3 +366,64 @@ def _generate_html(config: Config) -> str:
     html = _HTML_TEMPLATE.format(data=json.dumps(graph))
     assert html.startswith("<!DOCTYPE html>"), "output must be an HTML document"
     return html
+
+
+SERIES = ("#3987e5", "#d95926", "#199e70")
+OTHER = "#8a8a80"
+OUTLIER = "#fab219"
+
+
+def _scope_colors(points: list[Point]) -> dict[str, str]:
+    assert points, "need points to colour"
+    assert all(point.scope for point in points), "every point must carry a scope"
+    ranked = [scope for scope, _ in Counter(point.scope for point in points).most_common()]
+    return {
+        scope: SERIES[index] if index < len(SERIES) else OTHER for index, scope in enumerate(ranked)
+    }
+
+
+def _rings(points: list[Point]) -> list[dict]:
+    assert points, "need points to outline"
+    assert all(point.cluster >= 0 for point in points), "cluster labels must be non-negative"
+    grouped: dict[int, list[Point]] = defaultdict(list)
+    for point in points:
+        grouped[point.cluster].append(point)
+    out: list[dict] = []
+    for label, members in sorted(grouped.items()):
+        if len(members) < 2:
+            continue
+        scopes = Counter(member.scope for member in members)
+        out.append(
+            {
+                "cluster": label,
+                "scope": scopes.most_common(1)[0][0],
+                "mixed": len(scopes) > 1,
+                "ring": [list(vertex) for vertex in hull([(m.x, m.y) for m in members])],
+            }
+        )
+    return out
+
+
+def _build_scatter(points: list[Point], insights: list[Insight]) -> dict:
+    assert all(point.name for point in points), "every point must have a name"
+    assert all(insight.rule for insight in insights), "every insight must carry a rule"
+    if not points:
+        return {"points": [], "rings": [], "legend": []}
+    colors = _scope_colors(points)
+    flagged = {name for i in insights if i.rule == "context-outlier" for name in i.names}
+    return {
+        "points": [
+            {
+                "name": point.name,
+                "x": point.x,
+                "y": point.y,
+                "role": point.role,
+                "scope": point.scope,
+                "color": colors[point.scope],
+                "outlier": point.name in flagged,
+            }
+            for point in points
+        ],
+        "rings": _rings(points),
+        "legend": [{"scope": scope, "color": color} for scope, color in colors.items()],
+    }
