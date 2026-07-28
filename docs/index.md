@@ -46,6 +46,10 @@ another bounded context gets flagged where it sits.
 dddlint map src/
 ```
 
+Every run also draws the whole vocabulary, one boundary per bounded context:
+
+![The dddlint vocabulary map: names placed by embedding similarity, with a boundary drawn around each bounded context](assets/dddmap.png){ loading=lazy }
+
 ## Where to go next
 
 This documentation follows the [Diátaxis](https://diataxis.fr) framework.

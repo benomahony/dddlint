@@ -113,6 +113,10 @@ Config rules are checked against `dddlint.yaml` itself on every run.
 
 Vectors are cached in `.dddlint/embeddings.json`, keyed by model and dimensions, so only new names are ever embedded. Configure the model under `embeddings` in `dddlint.yaml`.
 
+Every run also writes `dddmap.html` beside the config and opens it: the whole vocabulary laid out by embedding similarity, verbs as triangles and nouns as dots, with one boundary drawn around each bounded context.
+
+![The dddlint vocabulary map: names placed by embedding similarity, with a boundary drawn around each bounded context](docs/assets/dddmap.png)
+
 ## LSP
 
 The LSP server publishes diagnostics on file open and save, scanning the entire workspace each time so cross-file drift is always caught. Alias findings include a code action to rename the identifier to the canonical term with case preserved (`ClientRepo` → `CustomerRepo`, `get_client` → `get_customer`). The rename is delegated to the language server that owns the file, since that is the one that can find the call sites — see [wiring it up](https://benomahony.github.io/dddlint/how-to/editor-lsp/#wire-up-the-rename).
