@@ -46,6 +46,27 @@ global rules everyone agrees on, `domains` for a broad subject area, and
 last, so a context can override a term the surrounding domain made canonical.
 See [Scope rules to domains and contexts](../how-to/domains-contexts.md).
 
+## The language evolves — findings are a prompt, not a verdict
+
+A ubiquitous language is a model of the domain, and the domain keeps moving.
+Terms are refined, split, or retired as the team's understanding improves, so a
+vocabulary that never changes is not stable — it is stale.
+
+That makes a finding a question with two valid answers. Either the name is wrong
+and the code should be renamed, or the name is right and `dddlint.yaml` is
+behind. Someone straining the vocabulary — reaching for a word the config
+forbids, or reusing a canonical term for a concept it does not quite fit — is
+usually not being sloppy. They are the first person to hit a gap in the model,
+and repeated strain on the same term is the strongest signal you get that the
+language needs a new word, a split into two, or a new bounded context to hold
+the second meaning.
+
+So resolve findings deliberately. Renaming a name to silence the linter when the
+domain has genuinely moved on encodes the old model deeper. Because the config
+lives in version control next to the code, updating it is an ordinary reviewable
+commit — the same diff that changes the vocabulary records who changed it and
+why.
+
 ## Why names, not comments or docstrings
 
 Names are the part of the code every reader sees and cannot skip. A stale
@@ -67,7 +88,12 @@ An autonomous coding agent generates plausible names at speed. "Plausible" is
 exactly the failure mode a ubiquitous language guards against — the agent has no
 memory of the term the team agreed on last quarter. A non-zero exit code on a
 naming violation gives the agent's loop the same feedback a human gets from a
-red build: fix the word, then continue.
+red build: use the agreed word, then continue.
+
+An agent should not edit the vocabulary to make its own code pass — that is the
+one resolution reserved for a human who understands why the domain moved. When
+an agent keeps colliding with the same term, treat the collision as a report to
+read, not a rule to relax.
 
 ## Further reading
 
