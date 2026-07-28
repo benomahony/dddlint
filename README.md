@@ -113,7 +113,7 @@ Vectors are cached in `.dddlint/embeddings.json`, keyed by model and dimensions,
 
 ## LSP
 
-The LSP server publishes diagnostics on file open and save, scanning the entire workspace each time so cross-file drift is always caught. Alias findings include a code action to rename the identifier to the canonical term with case preserved (`ClientRepo` → `CustomerRepo`, `get_client` → `get_customer`).
+The LSP server publishes diagnostics on file open and save, scanning the entire workspace each time so cross-file drift is always caught. Alias findings include a code action to rename the identifier to the canonical term with case preserved (`ClientRepo` → `CustomerRepo`, `get_client` → `get_customer`). The rename is delegated to the language server that owns the file, since that is the one that can find the call sites — see [wiring it up](https://benomahony.github.io/dddlint/how-to/editor-lsp/#wire-up-the-rename).
 
 **Neovim**, add to `init.lua`:
 

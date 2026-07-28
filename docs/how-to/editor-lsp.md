@@ -14,9 +14,48 @@ offers a one-click rename from an alias to its canonical term.
 - It publishes diagnostics on **file open** and **file save**.
 - Each run scans the **entire workspace**, so cross-file
   [drift](../reference/rules.md#drift) is always caught, not just the open file.
-- [Alias findings](../reference/rules.md#alias) carry a code action that renames
-  the identifier to the canonical term with case preserved
-  (`ClientRepo` → `CustomerRepo`, `get_client` → `get_customer`).
+- [Alias findings](../reference/rules.md#alias) carry two code actions, both
+  targeting the canonical term with case preserved (`ClientRepo` →
+  `CustomerRepo`, `get_client` → `get_customer`):
+  - **Rename everywhere** runs the `dddlint.rename` command, which your editor
+    forwards to the language server that owns the file. dddlint reads names in
+    306 languages but understands none of them well enough to find call sites,
+    so the rename belongs to the server that does. Needs the glue below.
+  - **Replace in this file only** applies a plain text edit to the definition.
+    Use it where no rename provider is attached; call sites are yours to fix.
+
+## Wire up the rename
+
+`dddlint.rename` is passed `[uri, line, character, newName]`. Handle it in your
+client by asking the file's own language server to rename at that position.
+Without the glue the command still runs, but dddlint can only tell you which
+term to rename to.
+
+```lua title="init.lua (Neovim)"
+vim.lsp.commands["dddlint.rename"] = function(command)
+  local uri, line, character, new_name = unpack(command.arguments)
+  vim.api.nvim_win_set_buf(0, vim.uri_to_bufnr(uri))
+  vim.api.nvim_win_set_cursor(0, { line + 1, character })
+  vim.lsp.buf.rename(new_name, {
+    filter = function(client) return client.name ~= "dddlint" end,
+  })
+end
+```
+
+```ts title="extension.ts (VS Code)"
+commands.registerCommand("dddlint.rename", async (uri, line, character, name) => {
+  const edit = await commands.executeCommand<WorkspaceEdit>(
+    "vscode.executeDocumentRenameProvider",
+    Uri.parse(uri),
+    new Position(line, character),
+    name,
+  );
+  if (edit) await workspace.applyEdit(edit);
+});
+```
+
+Editors with no hook for server commands (Helix today) get the message instead;
+their own rename keybinding on the flagged identifier does the same job.
 
 The command to launch it over stdio is:
 
