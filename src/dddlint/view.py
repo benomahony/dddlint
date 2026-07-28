@@ -427,3 +427,103 @@ def _build_scatter(points: list[Point], insights: list[Insight]) -> dict:
         "rings": _rings(points),
         "legend": [{"scope": scope, "color": color} for scope, color in colors.items()],
     }
+
+
+_SCATTER_TEMPLATE = """\
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DDD Vocabulary Map</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0d0f17; overflow: hidden; font-family: system-ui, sans-serif; }
+  canvas { display: block; }
+  #title { position: fixed; top: 1.5rem; left: 1.5rem; font-size: 1.1rem; font-weight: 700;
+           color: #e2e4f0; letter-spacing: -0.03em; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="title">DDD Vocabulary Map</div>
+<script>
+const DATA = __DATA__;
+const OUTLIER = '__OUTLIER__';
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', () => { resize(); draw(); });
+
+const xs = DATA.points.map(p => p.x), ys = DATA.points.map(p => p.y);
+const span = {
+  x0: Math.min(...xs), x1: Math.max(...xs),
+  y0: Math.min(...ys), y1: Math.max(...ys),
+};
+let cam = { x: 0, y: 0, zoom: 1 };
+
+function fit(p) {
+  const pad = 90;
+  const wide = (span.x1 - span.x0) || 1, tall = (span.y1 - span.y0) || 1;
+  const s = Math.min((W - pad * 2) / wide, (H - pad * 2) / tall);
+  return {
+    x: (W - wide * s) / 2 + (p[0] - span.x0) * s,
+    y: (H - tall * s) / 2 + (p[1] - span.y0) * s,
+  };
+}
+
+function screen(p) {
+  const f = fit(p);
+  return { x: (f.x - W / 2) * cam.zoom + W / 2 + cam.x, y: (f.y - H / 2) * cam.zoom + H / 2 + cam.y };
+}
+
+function marker(p, at) {
+  ctx.beginPath();
+  if (p.role === 'verb') {
+    ctx.moveTo(at.x, at.y - 6);
+    ctx.lineTo(at.x + 5.5, at.y + 4);
+    ctx.lineTo(at.x - 5.5, at.y + 4);
+    ctx.closePath();
+  } else {
+    ctx.arc(at.x, at.y, 5.5, 0, Math.PI * 2);
+  }
+  ctx.fillStyle = alpha(p.color, 0.85);
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = p.outlier ? OUTLIER : '#0d0f17';
+  if (p.outlier || cam.zoom > 1.4) {
+    ctx.font = '500 10px system-ui';
+    ctx.fillStyle = p.outlier ? OUTLIER : '#c3c2b7';
+    ctx.textAlign = 'center';
+    ctx.fillText(p.name, at.x, at.y - 11);
+  }
+  ctx.stroke();
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+}
+
+draw();
+</script>
+</body>
+</html>
+"""
+
+
+def _generate_scatter(points: list[Point], insights: list[Insight]) -> str:
+    scatter = _build_scatter(points, insights)
+    assert "points" in scatter and "rings" in scatter, "scatter must have points and rings"
+    colors = {entry["scope"]: entry["color"] for entry in scatter["legend"]}
+    for ring in scatter["rings"]:
+        ring["color"] = colors[ring["scope"]]
+    html = _SCATTER_TEMPLATE.replace("__DATA__", json.dumps(scatter)).replace(
+        "__OUTLIER__", OUTLIER
+    )
+    assert html.startswith("<!DOCTYPE html>"), "output must be an HTML document"
+    return html
