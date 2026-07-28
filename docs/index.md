@@ -34,6 +34,18 @@ forbidden: [util, helper, manager]
 dddlint lint src/
 ```
 
+## Beyond spelling
+
+Token rules only catch the words you thought to write down. `dddlint map`
+embeds every definition name and compares meaning instead, so
+`fetch_order` and `retrieve_purchase` surface as the same idea worded twice
+even though they share no token, and a name whose vocabulary belongs to
+another bounded context gets flagged where it sits.
+
+```sh
+dddlint map src/
+```
+
 ## Where to go next
 
 This documentation follows the [Diátaxis](https://diataxis.fr) framework.
