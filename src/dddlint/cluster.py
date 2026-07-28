@@ -3,6 +3,7 @@ from collections.abc import Mapping, Sequence
 import numpy as np
 
 Vector = Sequence[float]
+Point2 = tuple[float, float]
 
 
 def _unit(vectors: Sequence[Vector]) -> np.ndarray:
@@ -76,3 +77,28 @@ def clusters(vectors: Sequence[Vector], threshold: float) -> list[list[int]]:
     out = sorted(grouped.values())
     assert sum(len(group) for group in out) == len(vectors), "every vector lands in one cluster"
     return out
+
+
+def _turn(origin: Point2, first: Point2, second: Point2) -> float:
+    assert len(origin) == 2 and len(first) == 2, "turns are computed on 2-D points"
+    assert len(second) == 2, "turns are computed on 2-D points"
+    return (first[0] - origin[0]) * (second[1] - origin[1]) - (first[1] - origin[1]) * (
+        second[0] - origin[0]
+    )
+
+
+def hull(points: Sequence[Point2]) -> list[Point2]:
+    assert len(points) > 0, "need at least one point for a hull"
+    assert all(len(point) == 2 for point in points), "hull points must be 2-D"
+    ordered = sorted(set(points))
+    if len(ordered) < 3:
+        return ordered
+    chains: list[list[Point2]] = []
+    for sequence in (ordered, ordered[::-1]):
+        chain: list[Point2] = []
+        for point in sequence:
+            while len(chain) >= 2 and _turn(chain[-2], chain[-1], point) <= 0:
+                chain.pop()
+            chain.append(point)
+        chains.append(chain)
+    return chains[0][:-1] + chains[1][:-1]
