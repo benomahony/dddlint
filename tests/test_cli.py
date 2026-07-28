@@ -134,7 +134,7 @@ def test_map_on_an_empty_tree_says_so(tmp_path: Path):
     assert "no definitions" in result.stdout
 
 
-def test_map_writes_the_scatter_beside_the_config_and_opens_it(tmp_path: Path):
+def test_map_writes_dddmap_beside_the_config_and_opens_it(tmp_path: Path):
     root = _repo_with_warm_cache(tmp_path)
     result = runner.invoke(
         app,
@@ -142,8 +142,8 @@ def test_map_writes_the_scatter_beside_the_config_and_opens_it(tmp_path: Path):
         env={"BROWSER": "true"},
     )
     assert result.exit_code == 0
-    target = root / ".dddlint" / "map.html"
-    assert "map.html" in result.stdout
+    target = root / "dddmap.html"
+    assert "dddmap.html" in result.stdout
     page = target.read_text()
     assert page.startswith("<!DOCTYPE html>")
     assert "__DATA__" not in page

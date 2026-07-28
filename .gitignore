@@ -20,3 +20,4 @@ htmlcov/
 .ruff_cache/
 .mypy_cache/
 .dddlint/
+dddmap.html

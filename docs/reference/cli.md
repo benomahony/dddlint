@@ -83,8 +83,8 @@ The first run downloads the model from
 `embeddings.cache`; later runs only embed names that are new. Always exits `0`,
 so it informs rather than gates. Prints `no definitions found` on an empty tree.
 
-Every run also writes a scatter plot of the vocabulary to `.dddlint/map.html`
-and opens it: names laid out by PCA so neighbours mean similar things, drawn as
+Every run also writes a scatter plot of the vocabulary to `dddmap.html` beside
+the config and opens it: names laid out by PCA so neighbours mean similar things, drawn as
 triangles for verbs and dots for nouns. One named boundary wraps each bounded
 context, stretched around every name that belongs to it, so a context is one
 region however far PCA scatters its names. Hovering a boundary brightens it and

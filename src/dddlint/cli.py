@@ -190,8 +190,7 @@ def vocabulary_map(
     from .view import _generate_scatter
 
     points = map_points(collected, vectors, settings)
-    target = config.parent / ".dddlint" / "map.html"
-    target.parent.mkdir(parents=True, exist_ok=True)
+    target = config.parent / "dddmap.html"
     target.write_text(_generate_scatter(points, insights))
     console.print(f"[dim]map written to file://{target.resolve()}[/dim]")
     webbrowser.open(f"file://{target.resolve()}")
