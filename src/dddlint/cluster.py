@@ -21,6 +21,37 @@ def similarities(vectors: Sequence[Vector]) -> np.ndarray:
     return matrix
 
 
+def project(vectors: Sequence[Vector]) -> list[tuple[float, float]]:
+    assert len(vectors) > 0, "need at least one vector to project"
+    matrix = np.asarray(vectors, dtype=np.float64)
+    assert matrix.ndim == 2, "vectors must form a 2-D matrix of equal-length rows"
+    centred = matrix - matrix.mean(axis=0)
+    axes = np.linalg.svd(centred, full_matrices=False)[2][:2]
+    if axes.shape[0] < 2:
+        axes = np.vstack([axes, np.zeros_like(axes[:1])])
+    return [(float(x), float(y)) for x, y in centred @ axes.T]
+
+
+def centroid(vectors: Sequence[Vector]) -> list[float]:
+    assert len(vectors) > 0, "need at least one vector for a centroid"
+    unit = _unit(vectors)
+    mean = unit.mean(axis=0)
+    norm = float(np.linalg.norm(mean))
+    assert norm >= 0.0, "a vector norm cannot be negative"
+    return [float(component) for component in mean / (norm or 1.0)]
+
+
+def nearest(vector: Vector, centroids: dict[str, Vector]) -> tuple[str, float]:
+    assert centroids, "need at least one centroid to compare against"
+    assert len(vector) > 0, "vector must have components to compare"
+    scores = {
+        label: float(similarities([vector, other])[0][1]) for label, other in centroids.items()
+    }
+    best = max(scores, key=lambda label: scores[label])
+    assert best in centroids, "the winner must be one of the given centroids"
+    return best, scores[best]
+
+
 def _root(parent: list[int], index: int) -> int:
     assert 0 <= index < len(parent), "index must address a known vector"
     assert parent, "parent chain must be initialised"
