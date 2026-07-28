@@ -24,6 +24,11 @@ dddlint-lsp = "dddlint.server:main"
 [project.urls]
 Repository = "https://github.com/benomahony/dddlint"
 
+[project.optional-dependencies]
+embed = [
+    "numpy>=2",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -118,12 +123,16 @@ filename = "uv.lock"
 search = "name = \"dddlint\"\nversion = \"{current_version}\""
 replace = "name = \"dddlint\"\nversion = \"{new_version}\""
 
+[tool.uv.sources]
+dddlint = { workspace = true }
+
 [dependency-groups]
 dev = [
     "bandit>=1.9.4",
     "basedpyright>=1.39.9",
     "bump-my-version>=1.4.1",
     "cliqa>=0.1.5",
+    "dddlint[embed]",
     "deptry>=0.25.1",
     "mockbuster>=0.1.4",
     "prek>=0.4.10",
