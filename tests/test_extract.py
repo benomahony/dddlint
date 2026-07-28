@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from dddlint.extract import _flatten, definitions, language_for
+from dddlint.extract import _flatten, definitions, language_for, path_definitions
 
 pytestmark = pytest.mark.unit
 
@@ -62,3 +62,25 @@ def test_definitions_captures_constant_symbols(tmp_path: Path):
     src.write_text("const MAX: i32 = 5;\n")
     names = {d.name for d in definitions(src, "rust")}
     assert "MAX" in names
+
+
+def test_path_definitions_name_every_directory_and_the_module(tmp_path: Path):
+    src = tmp_path / "commons" / "utils" / "file_utils.py"
+    src.parent.mkdir(parents=True)
+    src.write_text("")
+    named = path_definitions(src, tmp_path)
+    assert [(d.name, d.kind) for d in named] == [
+        ("file_utils", "Module"),
+        ("commons", "Package"),
+        ("utils", "Package"),
+    ]
+    assert all(d.line == 0 for d in named)
+
+
+def test_path_definitions_anchor_a_package_at_its_init(tmp_path: Path):
+    src = tmp_path / "utils" / "m.py"
+    src.parent.mkdir()
+    src.write_text("")
+    (src.parent / "__init__.py").write_text("")
+    package = next(d for d in path_definitions(src, tmp_path) if d.kind == "Package")
+    assert package.path == tmp_path / "utils" / "__init__.py"

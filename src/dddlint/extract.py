@@ -10,6 +10,7 @@ DEFINITION_KINDS = frozenset(
     {"Function", "Method", "Class", "Struct", "Interface", "Enum", "Trait"}
 )
 SYMBOL_KINDS = frozenset({"Variable", "Constant"})
+PATH_KINDS = frozenset({"Module", "Package"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,6 +52,24 @@ def language_for(path: Path) -> str | None:
     assert path.name, "path must have a filename to detect a language"
     assert isinstance(path, Path), "path must be a Path object"
     return tslp.detect_language_from_path(str(path))
+
+
+def _package_anchor(folder: Path) -> Path:
+    assert folder.name, "a package must have a directory name"
+    assert not folder.is_file(), "a package must be a directory, not a file"
+    init = folder / "__init__.py"
+    return init if init.exists() else folder
+
+
+def path_definitions(path: Path, root: Path) -> list[Definition]:
+    """A package called utils names the domain as loudly as any class does."""
+    assert path.is_file(), "path must be an existing file to name"
+    assert root.is_dir(), "root must be an existing directory to walk up to"
+    out = [Definition(path.stem, "Module", path, 0)]
+    for parent in reversed(path.relative_to(root).parents):
+        if parent.name:
+            out.append(Definition(parent.name, "Package", _package_anchor(root / parent), 0))
+    return out
 
 
 def definitions(path: Path, language: str) -> list[Definition]:
