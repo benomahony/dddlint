@@ -60,7 +60,7 @@ async def read_resource(uri) -> str:  # type: ignore[no-untyped-def]
     return doc_file.read_text()
 
 
-async def main() -> None:
+async def serve_docs() -> None:
     """Run MCP server via stdio."""
     assert app is not None, "Server must be initialized"
 
@@ -73,4 +73,4 @@ async def main() -> None:
 if __name__ == "__main__":
     import asyncio
 
-    asyncio.run(main())
+    asyncio.run(serve_docs())
