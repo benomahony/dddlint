@@ -1,4 +1,3 @@
-import asyncio
 import json
 from collections.abc import Sequence
 from pathlib import Path
@@ -59,7 +58,7 @@ async def embed_names(
     batches = _batches(sorted(set(names) - set(vectors)), config.batch_size)
     if batches:
         embedder = _embedder(config, model)
-        results = await asyncio.gather(*(embedder.embed_documents(batch) for batch in batches))
+        results = [await embedder.embed_documents(batch) for batch in batches]
         vectors |= {
             name: [float(component) for component in vector]
             for batch, result in zip(batches, results, strict=True)

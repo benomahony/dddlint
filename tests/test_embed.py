@@ -64,6 +64,38 @@ def test_embed_names_batches_and_embeds_each_name_once(tmp_path: Path):
     assert len(vectors) == 3
 
 
+class OverlapTrackingModel(LetterEmbeddingModel):
+    """Records whether two batches were ever in flight at the same time."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.in_flight = 0
+        self.peak_in_flight = 0
+
+    async def embed(
+        self,
+        inputs: str | Sequence[str],
+        *,
+        input_type: EmbedInputType,
+        settings: EmbeddingSettings | None = None,
+    ) -> EmbeddingResult:
+        self.in_flight += 1
+        self.peak_in_flight = max(self.peak_in_flight, self.in_flight)
+        await asyncio.sleep(0)
+        try:
+            return await super().embed(inputs, input_type=input_type, settings=settings)
+        finally:
+            self.in_flight -= 1
+
+
+def test_batches_never_overlap(tmp_path: Path):
+    model = OverlapTrackingModel()
+    config = Embeddings(batch_size=1, cache=tmp_path / "embeddings.json")
+    asyncio.run(embed_names(["Order", "Invoice", "Customer"], config, model))
+    assert len(model.batches) == 3
+    assert model.peak_in_flight == 1
+
+
 def test_second_run_reads_the_cache_instead_of_the_model(tmp_path: Path):
     config = Embeddings(cache=tmp_path / "embeddings.json")
     first = asyncio.run(embed_names(["Order"], config, LetterEmbeddingModel()))
