@@ -57,3 +57,39 @@ def test_drift_flags_one_concept_many_spellings():
         Definition("get_user", "Function", Path("b.go"), 1),
     ]
     assert any(f.rule == "drift" for f in check(defs, config))
+
+
+def test_drift_ignores_dunder_names():
+    config = Config()
+    defs = [
+        Definition("__init__", "Function", Path("a.py"), 1),
+        Definition("init", "Function", Path("cli.py"), 1),
+    ]
+    assert not any(f.rule == "drift" for f in check(defs, config))
+
+
+def test_drift_ignores_case_only_difference_across_kinds():
+    config = Config()
+    defs = [
+        Definition("Entity", "Class", Path("models.py"), 1),
+        Definition("entity", "Function", Path("fluent.py"), 1),
+    ]
+    assert not any(f.rule == "drift" for f in check(defs, config))
+
+
+def test_drift_flags_case_only_difference_within_one_kind():
+    config = Config()
+    defs = [
+        Definition("Entity", "Class", Path("a.py"), 1),
+        Definition("entity", "Class", Path("b.py"), 1),
+    ]
+    assert any(f.rule == "drift" for f in check(defs, config))
+
+
+def test_drift_flags_visibility_only_difference():
+    config = Config()
+    defs = [
+        Definition("_validate_confidence", "Function", Path("a.py"), 1),
+        Definition("validate_confidence", "Function", Path("b.py"), 1),
+    ]
+    assert any(f.rule == "drift" for f in check(defs, config))

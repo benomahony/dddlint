@@ -108,6 +108,19 @@ def _check_one(
     return out
 
 
+def _is_dunder(name: str) -> bool:
+    assert name, "name must be non-empty to classify"
+    assert isinstance(name, str), "name must be a string"
+    return name.startswith("__") and name.endswith("__")
+
+
+def _case_only_across_kinds(names: set[str], kinds: set[str]) -> bool:
+    """Language convention, not drift: CapWords classes beside snake_case functions."""
+    assert names, "names must be non-empty to compare"
+    assert kinds, "every collision must carry at least one kind"
+    return len(kinds) > 1 and len({n.lower() for n in names}) == 1
+
+
 def check(definitions: list[Definition], config: Config) -> list[Finding]:
     assert all(d.line >= 0 for d in definitions), "definition lines must be non-negative"
     assert all(d.name for d in definitions), "every definition must have a name"
@@ -125,13 +138,17 @@ def check(definitions: list[Definition], config: Config) -> list[Finding]:
         out.extend(_check_one(definition, forbidden, aliases, config.enforce_canonical))
 
     by_tokens: dict[tuple[str, ...], set[str]] = defaultdict(set)
+    kinds: dict[tuple[str, ...], set[str]] = defaultdict(set)
     first: dict[tuple[str, ...], Definition] = {}
     for definition in definitions:
+        if _is_dunder(definition.name):
+            continue
         key = tuple(sorted(tokenise(definition.name)))
         by_tokens[key].add(definition.name)
+        kinds[key].add(definition.kind)
         first.setdefault(key, definition)
     for key, names in by_tokens.items():
-        if len(names) > 1:
+        if len(names) > 1 and not _case_only_across_kinds(names, kinds[key]):
             definition = first[key]
             spellings = ", ".join(sorted(names))
             out.append(
