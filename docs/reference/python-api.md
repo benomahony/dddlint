@@ -114,3 +114,80 @@ Read and validate a `dddlint.yaml` into a `Config`. See the
 
 Validate a `Config` for internal contradictions and return a list of `Finding`
 with `config:` rule names. Run automatically by `dddlint lint`.
+
+## `dddlint.discover`
+
+### `source_files(root, exclude, base=None)`
+
+Yield every file under `root`, skipping the built-in directories, the `exclude`
+gitwildmatch patterns, and any `.gitignore`. Patterns are matched against paths
+relative to `base`, defaulting to `root`. Pass the config file's directory as
+`base` so patterns keep working when `root` is a subdirectory.
+
+```python
+from pathlib import Path
+from tempfile import mkdtemp
+
+from dddlint.discover import source_files
+
+root = Path(mkdtemp())
+(root / "src").mkdir()
+(root / "src" / "keep.py").write_text("x = 1\n")
+(root / "src" / "gen.py").write_text("y = 2\n")
+
+found = {p.name for p in source_files(root / "src", ["src/gen.py"], root)}
+
+assert found == {"keep.py"}
+```
+
+## `dddlint.embed`
+
+### `await embed_names(names, config, model=None)`
+
+Embed `names` with the pydantic-ai model from an `Embeddings` config and return
+`{name: vector}`. Only names missing from `config.cache` are sent, in batches of
+`config.batch_size`; the cache is keyed by model and dimensions. Pass `model` to
+inject an `EmbeddingModel` directly instead of resolving `config.model`.
+
+## `dddlint.cluster`
+
+Vector helpers over plain `list[float]`, backed by numpy.
+
+| Function | Returns | Description |
+|---|---|---|
+| `similarities(vectors)` | ndarray | Square cosine similarity matrix |
+| `clusters(vectors, threshold)` | list[list[int]] | Single-link groups of indices joined above `threshold` |
+| `centroid(vectors)` | list[float] | Unit-normalised mean vector |
+| `nearest(vector, centroids)` | tuple[str, float] | Best-matching label and its score |
+| `project(vectors)` | list[tuple[float, float]] | PCA projection to 2-D |
+| `hull(points)` | list[tuple[float, float]] | Convex hull of 2-D points |
+
+## `dddlint.insights`
+
+Meaning-level analysis for `dddlint map`. Each takes the definitions, a
+`{name: vector}` mapping, and a `Config`.
+
+| Function | Returns | Description |
+|---|---|---|
+| `near_synonyms(definitions, vectors, config)` | list[`Insight`] | Clusters sharing meaning but no token |
+| `context_outliers(definitions, vectors, config)` | list[`Insight`] | Names closer to another scope's centroid |
+| `map_points(definitions, vectors, config)` | list[`Point`] | 2-D layout with role, scope, and cluster |
+| `threshold_for(config)` | float | `embeddings.threshold`, falling back to `similarity_threshold` |
+
+### `Insight`
+
+Frozen dataclass describing one observation.
+
+| Field | Type | Description |
+|---|---|---|
+| `rule` | str | `"near-synonym"` or `"context-outlier"` |
+| `message` | str | Human-readable explanation |
+| `names` | tuple[str, ...] | The names involved |
+| `score` | float | Strength, see the [rules reference](rules.md#insights) |
+| `path` | Path \| None | File of the first name (default `None`) |
+| `line` | int | Line of the first name (default `0`) |
+
+### `Point`
+
+Frozen dataclass placing one name on the map: `name`, `x`, `y`, `role`
+(`"verb"` for functions and methods, else `"noun"`), `scope`, and `cluster`.
