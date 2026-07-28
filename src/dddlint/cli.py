@@ -1,7 +1,7 @@
 import asyncio
 from collections import defaultdict
 from pathlib import Path
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 import typer
 from rich.console import Console
@@ -11,7 +11,9 @@ from .config import Config, load_config
 from .config_check import check_config
 from .discover import source_files
 from .extract import Definition, definitions, language_for
-from .insights import Insight, context_outliers, near_synonyms
+
+if TYPE_CHECKING:
+    from .insights import Insight
 
 app = typer.Typer(
     add_completion=False,
@@ -157,7 +159,7 @@ def _vectors(names: list[str], settings: Config, base: Path) -> dict[str, list[f
         raise typer.Exit(2) from error
 
 
-def _print_insights(insights: list[Insight]) -> None:
+def _print_insights(insights: list["Insight"]) -> None:
     assert all(insight.rule for insight in insights), "every insight must carry a rule tag"
     assert all(insight.names for insight in insights), "every insight must name something"
     for insight in insights:
@@ -183,6 +185,8 @@ def vocabulary_map(
         console.print("[bold yellow]no definitions found[/bold yellow]")
         raise typer.Exit(0)
     vectors = _vectors([d.name for d in collected], settings, config.parent)
+    from .insights import context_outliers, map_points, near_synonyms
+
     insights = near_synonyms(collected, vectors, settings) + context_outliers(
         collected, vectors, settings
     )
@@ -192,7 +196,6 @@ def vocabulary_map(
     console.print(f"\n[bold cyan]◆ {len(insights)} insights[/bold cyan]")
     import webbrowser
 
-    from .insights import map_points
     from .view import _generate_scatter
 
     points = map_points(collected, vectors, settings)
