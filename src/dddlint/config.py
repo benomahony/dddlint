@@ -1,7 +1,15 @@
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+
+class Embeddings(BaseModel):
+    model: str = "sentence-transformers:all-MiniLM-L6-v2"
+    dimensions: int | None = None
+    batch_size: int = 128
+    cache: Path = Path(".dddlint/embeddings.json")
+    threshold: float | None = None
 
 
 class SynonymGroup(BaseModel):
@@ -24,6 +32,7 @@ class Config(BaseModel):
     synonyms: list[SynonymGroup] = []
     domains: list[Context] = []
     contexts: list[Context] = []
+    embeddings: Embeddings = Field(default_factory=Embeddings)
 
 
 def load_config(path: Path) -> Config:
