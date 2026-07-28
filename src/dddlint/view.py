@@ -441,11 +441,16 @@ _SCATTER_TEMPLATE = """\
   canvas { display: block; }
   #title { position: fixed; top: 1.5rem; left: 1.5rem; font-size: 1.1rem; font-weight: 700;
            color: #e2e4f0; letter-spacing: -0.03em; }
+  #caption { position: fixed; top: 3rem; left: 1.5rem; font-size: 0.72rem; color: #6b7280;
+             max-width: 26rem; line-height: 1.5; }
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
 <div id="title">DDD Vocabulary Map</div>
+<div id="caption">Names placed by embedding similarity, flattened with PCA. Distance is
+approximate: neighbours share meaning. Rings outline clusters; a ring in amber holds more
+than one context.</div>
 <script>
 const DATA = __DATA__;
 const OUTLIER = '__OUTLIER__';
@@ -505,8 +510,30 @@ function marker(p, at) {
   ctx.stroke();
 }
 
+function alpha(hex, a) {
+  const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+  return `rgba(${r},${g},${b},${a})`;
+}
+
 function draw() {
   ctx.clearRect(0, 0, W, H);
+  for (const ring of DATA.rings) {
+    const path = ring.ring.map(screen);
+    const tint = ring.mixed ? OUTLIER : ring.color;
+    ctx.beginPath();
+    path.forEach((at, i) => i ? ctx.lineTo(at.x, at.y) : ctx.moveTo(at.x, at.y));
+    ctx.closePath();
+    ctx.fillStyle = alpha(tint, 0.06);
+    ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = alpha(tint, 0.4);
+    ctx.stroke();
+    const top = path.reduce((a, b) => a.y < b.y ? a : b);
+    ctx.font = '600 10px system-ui';
+    ctx.fillStyle = '#8a8a80';
+    ctx.textAlign = 'center';
+    ctx.fillText(ring.mixed ? ring.scope + ' + others' : ring.scope, top.x, top.y - 10);
+  }
 }
 
 draw();
