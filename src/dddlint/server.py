@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_CONFIG = Path("dddlint.yaml")
 
+RENAME_COMMAND = "dddlint.rename"
+
 SEVERITY: dict[str, types.DiagnosticSeverity] = {
     "forbidden": types.DiagnosticSeverity.Error,
     "alias": types.DiagnosticSeverity.Warning,
@@ -131,15 +133,29 @@ def code_action(ls: DddlintServer, params: types.CodeActionParams) -> list[types
     for f in ls.ddd_findings.get(uri, []):
         if f.line != cursor_line or f.fix is None:
             continue
-        actions.append(_in_file_replacement(uri, f))
+        actions += [_delegated_rename(uri, f), _in_file_replacement(uri, f)]
     return actions
+
+
+def _delegated_rename(uri: str, f: Finding) -> types.CodeAction:
+    assert f.fix, "a rename must have a canonical term to rename to"
+    assert uri, "a rename must name the document it starts in"
+    return types.CodeAction(
+        title=f"Rename '{f.name}' → '{f.fix}' everywhere (dddlint: {f.rule})",
+        kind=types.CodeActionKind.QuickFix,
+        command=types.Command(
+            title=f"Rename '{f.name}' → '{f.fix}'",
+            command=RENAME_COMMAND,
+            arguments=[uri, f.line, f.col, f.fix],
+        ),
+    )
 
 
 def _in_file_replacement(uri: str, f: Finding) -> types.CodeAction:
     assert f.fix, "a replacement must have a canonical term to write"
     assert f.col >= 0, "a replacement must start at a non-negative column"
     return types.CodeAction(
-        title=f"Rename '{f.name}' → '{f.fix}' (dddlint: {f.rule})",
+        title=f"Replace '{f.name}' → '{f.fix}' in this file only (dddlint: {f.rule})",
         kind=types.CodeActionKind.QuickFix,
         edit=types.WorkspaceEdit(
             changes={
@@ -154,6 +170,22 @@ def _in_file_replacement(uri: str, f: Finding) -> types.CodeAction:
                 ]
             }
         ),
+    )
+
+
+@server.command(RENAME_COMMAND)
+def rename(ls: DddlintServer, arguments: list[types.LSPAny]) -> None:
+    assert isinstance(ls, DddlintServer), "handler must receive a DddlintServer"
+    assert len(arguments) == 4, "rename takes a uri, line, column and canonical term"
+    new_name = arguments[3]
+    ls.window_show_message(
+        types.ShowMessageParams(
+            type=types.MessageType.Warning,
+            message=(
+                f"dddlint knows the term but not the language: run your editor's own rename "
+                f"here and use '{new_name}'. Wire {RENAME_COMMAND} to it to skip this step."
+            ),
+        )
     )
 
 

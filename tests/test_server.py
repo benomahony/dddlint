@@ -6,6 +6,7 @@ from pygls.workspace import Workspace
 
 from dddlint.check import Finding
 from dddlint.server import (
+    RENAME_COMMAND,
     DddlintServer,
     _scan,
     _to_diagnostic,
@@ -13,6 +14,7 @@ from dddlint.server import (
     code_action,
     did_open,
     did_save,
+    rename,
 )
 
 pytestmark = pytest.mark.unit
@@ -28,12 +30,16 @@ class RecordingServer(DddlintServer):
     def __init__(self, root_uri: str | None) -> None:
         super().__init__()
         self.published: list[types.PublishDiagnosticsParams] = []
+        self.messages: list[types.ShowMessageParams] = []
         self.protocol._workspace = Workspace(
             root_uri, position_encoding=types.PositionEncodingKind.Utf16
         )
 
     def text_document_publish_diagnostics(self, params: types.PublishDiagnosticsParams) -> None:
         self.published.append(params)
+
+    def window_show_message(self, params: types.ShowMessageParams) -> None:
+        self.messages.append(params)
 
 
 def _write_project(tmp_path: Path) -> None:
@@ -127,8 +133,49 @@ def test_code_action_offers_fix_at_cursor_line(tmp_path: Path):
         context=types.CodeActionContext(diagnostics=[]),
     )
     actions = code_action(server, params)
-    assert len(actions) == 1
-    assert "CustomerRepo" in actions[0].title
+    assert [action.title for action in actions] == [
+        "Rename 'ClientRepo' → 'CustomerRepo' everywhere (dddlint: alias)",
+        "Replace 'ClientRepo' → 'CustomerRepo' in this file only (dddlint: alias)",
+    ]
+
+
+def test_code_action_hands_the_rename_to_the_language_server(tmp_path: Path):
+    server = RecordingServer(tmp_path.as_uri())
+    uri = "file:///a.py"
+    server.ddd_findings[uri] = [
+        Finding(Path("/a.py"), 3, "ClientRepo", "alias", "use customer", col=6, fix="CustomerRepo")
+    ]
+    params = types.CodeActionParams(
+        text_document=types.TextDocumentIdentifier(uri=uri),
+        range=types.Range(
+            start=types.Position(line=3, character=0),
+            end=types.Position(line=3, character=0),
+        ),
+        context=types.CodeActionContext(diagnostics=[]),
+    )
+    delegating, in_file = code_action(server, params)
+    assert delegating.edit is None
+    assert delegating.command is not None
+    assert delegating.command.command == RENAME_COMMAND
+    assert delegating.command.arguments == [uri, 3, 6, "CustomerRepo"]
+    assert in_file.edit is not None
+    changes = in_file.edit.changes or {}
+    assert changes[uri][0].new_text == "CustomerRepo"
+
+
+def test_rename_command_is_advertised_to_clients():
+    from dddlint.server import server as live
+
+    assert RENAME_COMMAND in live.protocol.fm.commands
+    assert RENAME_COMMAND.startswith("dddlint."), "the command must be namespaced to dddlint"
+
+
+def test_bounced_rename_command_says_which_term_to_rename_to(tmp_path: Path):
+    server = RecordingServer(tmp_path.as_uri())
+    rename(server, ["file:///a.py", 3, 6, "CustomerRepo"])
+    assert len(server.messages) == 1
+    assert "CustomerRepo" in server.messages[0].message
+    assert server.messages[0].type == types.MessageType.Warning
 
 
 def test_code_action_skips_lines_without_fix(tmp_path: Path):
