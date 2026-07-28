@@ -131,26 +131,30 @@ def code_action(ls: DddlintServer, params: types.CodeActionParams) -> list[types
     for f in ls.ddd_findings.get(uri, []):
         if f.line != cursor_line or f.fix is None:
             continue
-        actions.append(
-            types.CodeAction(
-                title=f"Rename '{f.name}' → '{f.fix}' (dddlint: {f.rule})",
-                kind=types.CodeActionKind.QuickFix,
-                edit=types.WorkspaceEdit(
-                    changes={
-                        uri: [
-                            types.TextEdit(
-                                range=types.Range(
-                                    start=types.Position(line=f.line, character=f.col),
-                                    end=types.Position(line=f.line, character=f.col + len(f.name)),
-                                ),
-                                new_text=f.fix,
-                            )
-                        ]
-                    }
-                ),
-            )
-        )
+        actions.append(_in_file_replacement(uri, f))
     return actions
+
+
+def _in_file_replacement(uri: str, f: Finding) -> types.CodeAction:
+    assert f.fix, "a replacement must have a canonical term to write"
+    assert f.col >= 0, "a replacement must start at a non-negative column"
+    return types.CodeAction(
+        title=f"Rename '{f.name}' → '{f.fix}' (dddlint: {f.rule})",
+        kind=types.CodeActionKind.QuickFix,
+        edit=types.WorkspaceEdit(
+            changes={
+                uri: [
+                    types.TextEdit(
+                        range=types.Range(
+                            start=types.Position(line=f.line, character=f.col),
+                            end=types.Position(line=f.line, character=f.col + len(f.name)),
+                        ),
+                        new_text=f.fix,
+                    )
+                ]
+            }
+        ),
+    )
 
 
 def main() -> None:
