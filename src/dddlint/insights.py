@@ -26,6 +26,21 @@ def threshold_for(config: Config) -> float:
     return threshold
 
 
+def _stem(token: str) -> str:
+    assert token, "token must be non-empty to stem"
+    assert token == token.lower(), "tokens must already be lowercased"
+    if token.endswith("es") and len(token) > 4:
+        token = token[:-2]
+    return token[:-1] if token.endswith("s") and len(token) > 3 else token
+
+
+def _stems(name: str) -> set[str]:
+    assert name, "name must be non-empty"
+    stems = {_stem(token) for token in tokenise(name)}
+    assert stems, "a name must yield at least one stem"
+    return stems
+
+
 def _first_seen(
     definitions: list[Definition], vectors: Mapping[str, Vector]
 ) -> dict[str, Definition]:
@@ -51,7 +66,7 @@ def near_synonyms(
     out: list[Insight] = []
     for group in clusters([vectors[name] for name in names], threshold_for(config)):
         members = tuple(names[index] for index in group)
-        if len(members) < 2 or set.intersection(*(set(tokenise(m)) for m in members)):
+        if len(members) < 2 or set.intersection(*(_stems(m) for m in members)):
             continue
         score = min(matrix[a][b] for a in group for b in group if a != b)
         out.append(

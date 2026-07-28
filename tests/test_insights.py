@@ -122,3 +122,10 @@ def test_map_points_carry_layout_role_scope_and_cluster():
     assert points["Order"].scope == "core"
     assert points["Invoice"].cluster != points["Order"].cluster
     assert points["Invoice"].cluster == points["charge_card"].cluster
+
+
+def test_near_synonyms_ignores_a_plural_of_the_same_word():
+    definitions = [definition("Definition"), definition("definitions")]
+    vectors = {"Definition": EAST, "definitions": EAST_ISH}
+    config = Config(embeddings=Embeddings(threshold=0.9))
+    assert near_synonyms(definitions, vectors, config) == []
