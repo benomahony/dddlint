@@ -5,7 +5,7 @@ from .check import Finding
 from .config import Config, Context, SynonymGroup
 
 
-def _alias_map(synonyms: list[SynonymGroup]) -> dict[str, str]:
+def _lowered_alias_map(synonyms: list[SynonymGroup]) -> dict[str, str]:
     result = {alias.lower(): g.canonical.lower() for g in synonyms for alias in g.aliases}
     assert all(k == k.lower() for k in result), "alias keys must be lowercased"
     assert all(v == v.lower() for v in result.values()), "canonicals must be lowercased"
@@ -40,7 +40,7 @@ def _alias_conflicts(config: Config, path: Path) -> list[Finding]:
     out: list[Finding] = []
     seen: dict[str, tuple[str, str]] = {}
     for scope_name, synonyms in scopes:
-        for alias, canonical in _alias_map(synonyms).items():
+        for alias, canonical in _lowered_alias_map(synonyms).items():
             if alias in seen and seen[alias][1] != canonical:
                 prev_scope, prev_canonical = seen[alias]
                 out.append(
