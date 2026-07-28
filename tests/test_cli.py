@@ -1,4 +1,6 @@
 import json
+import subprocess
+import sys
 from io import StringIO
 from pathlib import Path
 
@@ -20,6 +22,13 @@ def test_version_flag_prints_version():
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
     assert __version__ in result.stdout
+
+
+def test_starting_the_cli_does_not_import_numpy():
+    probe = "import sys, dddlint.cli; sys.exit('numpy' in sys.modules)"
+    result = subprocess.run([sys.executable, "-c", probe], capture_output=True, text=True)
+    assert not result.stderr, result.stderr
+    assert result.returncode == 0, "numpy is an extra, so importing the CLI must not need it"
 
 
 def test_lint_reports_findings_and_exits_nonzero():
