@@ -510,8 +510,8 @@ def _build_scatter(points: list[Point], insights: list[Insight]) -> dict:
             for point in points
         ],
         "links": _links(points),
-        "regions": _regions(points, spacing * 3.0, spacing * 0.55),
-        "radius": spacing * 0.55,
+        "regions": _regions(points, spacing * 3.0, spacing * 0.75),
+        "radius": spacing * 0.75,
         "legend": [{"scope": scope, "color": color} for scope, color in colors.items()],
     }
 
@@ -544,18 +544,19 @@ _SCATTER_TEMPLATE = """\
 <div id="hint">scroll to zoom · drag to pan · zoom in for every name</div>
 <div id="legend"></div>
 <div id="caption">Names placed by embedding similarity, flattened with PCA. Distance is
-approximate: lines join names that cluster together, and an amber line means the cluster
-spans more than one context.</div>
+approximate: a named boundary wraps each bounded context, hugging its names rather than
+claiming the empty space between them.</div>
 <script>
 const DATA = __DATA__;
 const OUTLIER = '__OUTLIER__';
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
+const shade = document.createElement('canvas').getContext('2d');
 let W, H;
 
 function resize() {
-  W = canvas.width = window.innerWidth;
-  H = canvas.height = window.innerHeight;
+  W = canvas.width = shade.canvas.width = window.innerWidth;
+  H = canvas.height = shade.canvas.height = window.innerHeight;
 }
 resize();
 window.addEventListener('resize', () => { resize(); draw(); });
@@ -622,21 +623,63 @@ function alpha(hex, a) {
   return `rgba(${r},${g},${b},${a})`;
 }
 
+function blobRadius() {
+  const from = screen([0, 0]), to = screen([DATA.radius, 0]);
+  return Math.max(9, Math.hypot(to.x - from.x, to.y - from.y));
+}
+
+function blob(region, r) {
+  shade.beginPath();
+  for (const disc of region.discs) {
+    const at = screen(disc), lump = Math.max(2, r * disc[2]);
+    shade.moveTo(at.x + lump, at.y);
+    shade.arc(at.x, at.y, lump, 0, Math.PI * 2);
+  }
+  shade.fill();
+  shade.lineWidth = r * 2;
+  shade.lineCap = shade.lineJoin = 'round';
+  shade.beginPath();
+  for (const [a, b] of region.edges) {
+    const from = screen(a), to = screen(b);
+    shade.moveTo(from.x, from.y);
+    shade.lineTo(to.x, to.y);
+  }
+  if (region.edges.length) shade.stroke();
+}
+
+function bounds(region, r) {
+  const at = region.discs.map(screen), pad = r * 1.3 + 6;
+  const x0 = Math.min(...at.map(p => p.x)) - pad, y0 = Math.min(...at.map(p => p.y)) - pad;
+  return { x: x0, y: y0, w: Math.max(...at.map(p => p.x)) + pad - x0,
+           h: Math.max(...at.map(p => p.y)) + pad - y0, top: Math.min(...at.map(p => p.y)) };
+}
+
+function paste(box, a) {
+  ctx.globalAlpha = a;
+  ctx.drawImage(shade.canvas, box.x, box.y, box.w, box.h, box.x, box.y, box.w, box.h);
+  ctx.globalAlpha = 1;
+}
+
+function bound(region) {
+  const r = blobRadius(), box = bounds(region, r);
+  shade.clearRect(box.x, box.y, box.w, box.h);
+  shade.globalCompositeOperation = 'source-over';
+  shade.fillStyle = shade.strokeStyle = region.color;
+  blob(region, r);
+  paste(box, 0.13);
+  shade.globalCompositeOperation = 'destination-out';
+  blob(region, r - 2.5);
+  paste(box, 0.55);
+  ctx.font = '600 11px system-ui';
+  ctx.fillStyle = alpha(region.color, 0.8);
+  ctx.textAlign = 'center';
+  ctx.fillText(region.scope, box.x + box.w / 2, box.top - r - 6);
+}
+
 function draw() {
   ctx.clearRect(0, 0, W, H);
   taken = [];
-  for (const link of DATA.links) {
-    const at = screen(link.anchor);
-    ctx.strokeStyle = alpha(link.mixed ? OUTLIER : link.color, 0.35);
-    ctx.lineWidth = 1;
-    for (const spoke of link.spokes) {
-      const to = screen(spoke);
-      ctx.beginPath();
-      ctx.moveTo(at.x, at.y);
-      ctx.lineTo(to.x, to.y);
-      ctx.stroke();
-    }
-  }
+  for (const region of DATA.regions) bound(region);
   for (const p of DATA.points) marker(p, screen([p.x, p.y]));
 }
 

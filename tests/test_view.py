@@ -126,7 +126,7 @@ def test_scatter_gives_each_name_its_own_lopsided_lump():
 
 def test_scatter_sizes_blobs_from_the_typical_spacing():
     points = [point("Invoice", "billing", 0, 0.0, 0.0), point("Bill", "billing", 0, 2.0, 0.0)]
-    assert _build_scatter(points, [])["radius"] == pytest.approx(1.1)
+    assert _build_scatter(points, [])["radius"] == pytest.approx(1.5)
 
 
 def test_scatter_marks_a_cluster_spanning_two_scopes_as_mixed():
