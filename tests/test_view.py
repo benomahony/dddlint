@@ -94,7 +94,7 @@ def test_scatter_bounds_one_region_per_context():
     assert regions[0]["edges"] == [[[0.0, 0.0], [1.0, 0.0]]]
 
 
-def test_scatter_leaves_far_apart_members_of_a_context_unjoined():
+def test_scatter_joins_a_scattered_context_into_one_region():
     points = [
         point("Invoice", "billing", 0, 0.0, 0.0),
         point("Bill", "billing", 0, 1.0, 0.0),
@@ -102,7 +102,7 @@ def test_scatter_leaves_far_apart_members_of_a_context_unjoined():
     ]
     region = _build_scatter(points, [])["regions"][0]
     assert len(region["discs"]) == 6
-    assert region["edges"] == [[[0.0, 0.0], [1.0, 0.0]]]
+    assert region["edges"] == [[[0.0, 0.0], [1.0, 0.0]], [[1.0, 0.0], [90.0, 0.0]]]
 
 
 def test_scatter_gives_each_name_its_own_lopsided_lump():

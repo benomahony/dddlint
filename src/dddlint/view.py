@@ -398,9 +398,9 @@ def _spacing(points: list[Point]) -> float:
     return gaps[len(gaps) // 2] or 1.0
 
 
-def _spanning_edges(members: list[Point], reach: float) -> list[list[list[float]]]:
+def _spanning_edges(members: list[Point]) -> list[list[list[float]]]:
     assert members, "need members to span"
-    assert reach > 0.0, "reach must be a positive distance"
+    assert all(member.name for member in members), "every member must have a name"
     reached, waiting, out = [members[0]], members[1:], []
     while waiting:
         near, joining = min(
@@ -408,8 +408,8 @@ def _spanning_edges(members: list[Point], reach: float) -> list[list[list[float]
         )
         waiting.remove(joining)
         reached.append(joining)
-        if _gap(near, joining) <= reach:
-            out.append([[near.x, near.y], [joining.x, joining.y]])
+        out.append([[near.x, near.y], [joining.x, joining.y]])
+    assert len(out) == len(members) - 1, "a context must span into one connected region"
     return out
 
 
@@ -424,9 +424,9 @@ def _lumps(member: Point, radius: float) -> list[list[float]]:
     ]
 
 
-def _regions(points: list[Point], reach: float, radius: float) -> list[dict]:
+def _regions(points: list[Point], radius: float) -> list[dict]:
     assert points, "need points to bound"
-    assert reach > 0.0, "reach must be a positive distance"
+    assert radius > 0.0, "radius must be a positive distance"
     grouped: dict[str, list[Point]] = defaultdict(list)
     for point in points:
         grouped[point.scope].append(point)
@@ -434,7 +434,7 @@ def _regions(points: list[Point], reach: float, radius: float) -> list[dict]:
         {
             "scope": scope,
             "discs": [lump for m in members for lump in _lumps(m, radius)],
-            "edges": _spanning_edges(members, reach),
+            "edges": _spanning_edges(members),
         }
         for scope, members in sorted(grouped.items())
     ]
@@ -482,7 +482,7 @@ def _build_scatter(points: list[Point], insights: list[Insight]) -> dict:
             }
             for point in points
         ],
-        "regions": _regions(points, spacing * 3.0, spacing * 0.75),
+        "regions": _regions(points, spacing * 0.75),
         "radius": spacing * 0.75,
         "legend": [{"scope": scope, "color": color} for scope, color in colors.items()],
     }
@@ -516,8 +516,8 @@ _SCATTER_TEMPLATE = """\
 <div id="hint">scroll to zoom · drag to pan · zoom in for every name</div>
 <div id="legend"></div>
 <div id="caption">Names placed by embedding similarity, flattened with PCA. Distance is
-approximate: a named boundary wraps each bounded context, hugging its names rather than
-claiming the empty space between them.</div>
+approximate: one named boundary per bounded context, stretched to hold every name that
+belongs to it.</div>
 <script>
 const DATA = __DATA__;
 const OUTLIER = '__OUTLIER__';
