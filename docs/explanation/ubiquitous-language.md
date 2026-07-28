@@ -6,16 +6,24 @@ icon: lucide/lightbulb
 
 ## The problem
 
-In domain-driven design, a **ubiquitous language** is a single, shared
-vocabulary used by everyone on a project — in conversation, in documentation,
-and in the code. When the domain expert says "order", the code says `order`.
-Not `purchase`, not `transaction`, not `Order` in one module and `PurchaseDto`
-in another.
+In domain-driven design, a **ubiquitous language** is the vocabulary shared by
+everyone working *within a single bounded context* — in conversation, in
+documentation, and in the code. Inside that boundary the term is precise and
+non-negotiable: when the domain expert says "order", the code says `order`. Not
+`purchase`, not `transaction`, not `Order` in one module and `PurchaseDto` in
+another.
 
-Language drifts anyway. A new engineer calls it a `client`; the original code
-calls it a `customer`. A refactor introduces an `OrderManager` next to the
-existing `OrderService`. Each choice is locally reasonable, but the codebase now
-speaks three dialects and every reader pays a translation tax.
+The language is ubiquitous *within* its context, not across the whole system. A
+real system has several bounded contexts, each with its own language, and the
+same word can legitimately mean different things in each — a "shipment" in
+fulfilment is not a "shipment" in billing. Forcing one vocabulary over every
+context is the mistake the boundary exists to prevent; translation belongs at
+the boundary between contexts, not inside them.
+
+Language drifts within a context anyway. A new engineer calls it a `client`; the
+original code calls it a `customer`. A refactor introduces an `OrderManager`
+next to the existing `OrderService`. Each choice is locally reasonable, but the
+context now speaks three dialects and every reader pays a translation tax.
 
 Linters catch style. Type checkers catch types. Neither catches a codebase
 slowly forgetting its own words.
@@ -31,6 +39,12 @@ vocabulary down in `dddlint.yaml`, and it holds the code to it:
   is canonical and the rest are aliases that should be renamed.
 - **Drift** — even without a rule, the same concept spelled several ways is
   worth surfacing.
+
+Rules live at three scopes, so one config can hold several languages at once:
+global rules everyone agrees on, `domains` for a broad subject area, and
+`contexts` for a bounded context's own vocabulary — path-scoped and applied
+last, so a context can override a term the surrounding domain made canonical.
+See [Scope rules to domains and contexts](../how-to/domains-contexts.md).
 
 ## Why names, not comments or docstrings
 
