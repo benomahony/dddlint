@@ -141,7 +141,7 @@ def test_map_writes_dddmap_beside_the_config_and_opens_it(tmp_path: Path):
     result = runner.invoke(
         app,
         ["map", str(root), "--config", str(root / "dddlint.yaml")],
-        env={"BROWSER": "true"},
+        env={"BROWSER": "true", "COLUMNS": "500"},
     )
     assert result.exit_code == 0
     target = root / "dddmap.html"
