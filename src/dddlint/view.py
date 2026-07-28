@@ -404,6 +404,22 @@ def _rings(points: list[Point]) -> list[dict]:
     return out
 
 
+def _anchors(points: list[Point]) -> set[str]:
+    assert points, "need points to pick anchors from"
+    assert all(point.name for point in points), "every point must have a name"
+    grouped: dict[int, list[Point]] = defaultdict(list)
+    for point in points:
+        grouped[point.cluster].append(point)
+    out: set[str] = set()
+    for members in grouped.values():
+        if len(members) < 2:
+            continue
+        mid_x = sum(member.x for member in members) / len(members)
+        mid_y = sum(member.y for member in members) / len(members)
+        out.add(min(members, key=lambda m: (m.x - mid_x) ** 2 + (m.y - mid_y) ** 2).name)
+    return out
+
+
 def _build_scatter(points: list[Point], insights: list[Insight]) -> dict:
     assert all(point.name for point in points), "every point must have a name"
     assert all(insight.rule for insight in insights), "every insight must carry a rule"
@@ -411,6 +427,7 @@ def _build_scatter(points: list[Point], insights: list[Insight]) -> dict:
         return {"points": [], "rings": [], "legend": []}
     colors = _scope_colors(points)
     flagged = {name for i in insights if i.rule == "context-outlier" for name in i.names}
+    anchors = _anchors(points)
     return {
         "points": [
             {
@@ -421,6 +438,7 @@ def _build_scatter(points: list[Point], insights: list[Insight]) -> dict:
                 "scope": point.scope,
                 "color": colors[point.scope],
                 "outlier": point.name in flagged,
+                "anchor": point.name in anchors,
             }
             for point in points
         ],
@@ -509,7 +527,7 @@ function marker(p, at) {
   ctx.fill();
   ctx.lineWidth = 2;
   ctx.strokeStyle = p.outlier ? OUTLIER : '#0d0f17';
-  if (p.outlier || cam.zoom > 1.4) {
+  if (p.outlier || p.anchor || cam.zoom > 1.4) {
     ctx.font = '500 10px system-ui';
     ctx.fillStyle = p.outlier ? OUTLIER : '#c3c2b7';
     ctx.textAlign = 'center';

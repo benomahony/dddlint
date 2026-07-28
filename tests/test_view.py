@@ -103,3 +103,14 @@ def test_scatter_flags_names_reported_as_context_outliers():
     points = [point("Invoice", "billing", 0), point("Order", "core", 1)]
     flagged = {p["name"]: p["outlier"] for p in _build_scatter(points, [insight])["points"]}
     assert flagged == {"Invoice": False, "Order": True}
+
+
+def test_scatter_anchors_one_name_per_populated_cluster():
+    points = [
+        point("Invoice", "billing", 0, 0.0, 0.0),
+        point("Bill", "billing", 0, 1.0, 0.0),
+        point("Statement", "billing", 0, 4.0, 0.0),
+        point("Order", "core", 1, 9.0, 9.0),
+    ]
+    anchored = {p["name"] for p in _build_scatter(points, [])["points"] if p["anchor"]}
+    assert anchored == {"Bill"}
