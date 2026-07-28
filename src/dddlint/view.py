@@ -534,6 +534,7 @@ function draw() {
     ctx.textAlign = 'center';
     ctx.fillText(ring.mixed ? ring.scope + ' + others' : ring.scope, top.x, top.y - 10);
   }
+  for (const p of DATA.points) marker(p, screen([p.x, p.y]));
 }
 
 draw();
