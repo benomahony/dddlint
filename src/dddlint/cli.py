@@ -151,6 +151,7 @@ def _print_insights(insights: list[Insight]) -> None:
 def vocabulary_map(
     root: Annotated[Path | None, typer.Argument()] = None,
     config: Annotated[Path | None, typer.Option()] = None,
+    html: Annotated[Path | None, typer.Option("--html", help="write the map to this file")] = None,
 ) -> None:
     """Report project-level vocabulary insights from name embeddings."""
     root, config = _resolve(root, config)
@@ -169,6 +170,13 @@ def vocabulary_map(
     console.rule(style="dim")
     _print_insights(insights)
     console.print(f"\n[bold cyan]◆ {len(insights)} insights[/bold cyan]")
+    if html is not None:
+        from .insights import map_points
+        from .view import _generate_scatter
+
+        points = map_points(collected, vectors, settings)
+        html.write_text(_generate_scatter(points, insights))
+        console.print(f"[dim]map written to file://{html.resolve()}[/dim]")
 
 
 def _write_temp_html(content: str) -> str:

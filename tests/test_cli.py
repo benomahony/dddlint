@@ -128,3 +128,17 @@ def test_map_on_an_empty_tree_says_so(tmp_path: Path):
     result = runner.invoke(app, ["map", str(tmp_path), "--config", str(tmp_path / "dddlint.yaml")])
     assert result.exit_code == 0
     assert "no definitions" in result.stdout
+
+
+def test_map_writes_the_scatter_when_asked(tmp_path: Path):
+    root = _repo_with_warm_cache(tmp_path)
+    target = tmp_path / "map.html"
+    result = runner.invoke(
+        app,
+        ["map", str(root), "--config", str(root / "dddlint.yaml"), "--html", str(target)],
+    )
+    assert result.exit_code == 0
+    page = target.read_text()
+    assert page.startswith("<!DOCTYPE html>")
+    assert "__DATA__" not in page
+    assert "retrieve_purchase" in page
