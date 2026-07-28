@@ -27,6 +27,7 @@ Repository = "https://github.com/benomahony/dddlint"
 [project.optional-dependencies]
 embed = [
     "numpy>=2",
+    "pydantic-ai-slim>=2.19.0",
 ]
 
 [build-system]
