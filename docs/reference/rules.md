@@ -81,6 +81,50 @@ rules = {f.rule for f in check(defs, Config())}
 assert "drift" in rules
 ```
 
+Language conventions are not drift, so two cases are exempt:
+
+- **Dunder names.** `__init__` is a protocol slot, not a naming choice, so it
+  never drifts against an `init` function.
+- **Case-only collisions across kinds.** An `Entity` class beside an `entity()`
+  method is PEP 8, not duplication.
+
+Visibility-only pairs still report: `_validate` against `validate` in another
+module is genuine duplication.
+
+## Insights
+
+Emitted by [`dddlint map`](cli.md#map) rather than `lint`, from embeddings of
+the definition names. Insights carry a `score` instead of a severity and never
+affect the exit code, because meaning is a judgement call and not a gate.
+
+| Rule | Score | Description |
+|---|---|---|
+| `near-synonym` | weakest cosine similarity in the cluster | Names that mean the same thing while sharing no token |
+| `context-outlier` | how much closer the other scope sits | A name whose vocabulary belongs to a different domain or context |
+
+`near-synonym` is the counterpart to `drift`: drift catches one concept spelled
+several ways, this catches one concept **worded** several ways. Names sharing
+any token are skipped, since `drift` already covers those.
+
+```python
+from pathlib import Path
+
+from dddlint.config import Config
+from dddlint.extract import Definition
+from dddlint.insights import near_synonyms
+
+defs = [
+    Definition("fetch_order", "Function", Path("a.py"), 1),
+    Definition("retrieve_purchase", "Function", Path("b.py"), 1),
+]
+vectors = {"fetch_order": [0.0, 1.0], "retrieve_purchase": [0.05, 0.99]}
+
+insight = near_synonyms(defs, vectors, Config())[0]
+
+assert insight.rule == "near-synonym"
+assert insight.names == ("fetch_order", "retrieve_purchase")
+```
+
 ## Config rules
 
 Checked against `dddlint.yaml` on every run so a broken vocabulary is caught
