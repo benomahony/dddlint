@@ -513,7 +513,7 @@ _SCATTER_TEMPLATE = """\
 <body>
 <canvas id="c"></canvas>
 <div id="title">DDD Vocabulary Map</div>
-<div id="hint">scroll to zoom · drag to pan · zoom in for every name</div>
+<div id="hint">scroll to zoom · drag to pan · hover a context for its names</div>
 <div id="legend"></div>
 <div id="caption">Names placed by embedding similarity, flattened with PCA. Distance is
 approximate: one named boundary per bounded context, stretched to hold every name that
@@ -556,6 +556,7 @@ function screen(p) {
 }
 
 let taken = [];
+let hot = null;
 
 function labelFits(at, width) {
   const box = { x0: at.x - width / 2, x1: at.x + width / 2, y0: at.y - 9, y1: at.y };
@@ -578,12 +579,13 @@ function marker(p, at) {
   ctx.fill();
   ctx.lineWidth = 2;
   ctx.strokeStyle = p.outlier ? OUTLIER : '#0d0f17';
-  if (p.outlier || p.anchor || cam.zoom > 1.4) {
+  const lit = hot !== null && p.scope === hot.scope;
+  if (p.outlier || p.anchor || lit || cam.zoom > 1.4) {
     ctx.font = '500 10px system-ui';
     ctx.textAlign = 'center';
     const spot = { x: at.x, y: at.y - 11 };
     if (p.outlier || labelFits(spot, ctx.measureText(p.name).width)) {
-      ctx.fillStyle = p.outlier ? OUTLIER : '#c3c2b7';
+      ctx.fillStyle = p.outlier ? OUTLIER : (lit ? '#e8e9f2' : '#c3c2b7');
       ctx.fillText(p.name, spot.x, spot.y);
     }
   }
@@ -632,18 +634,37 @@ function paste(box, a) {
   ctx.globalAlpha = 1;
 }
 
+function inside(region, at, r) {
+  for (const disc of region.discs) {
+    const p = screen(disc);
+    if (Math.hypot(p.x - at.x, p.y - at.y) <= Math.max(2, r * disc[2])) return true;
+  }
+  for (const [a, b] of region.edges) {
+    const from = screen(a), to = screen(b);
+    const dx = to.x - from.x, dy = to.y - from.y, span = dx * dx + dy * dy || 1;
+    const t = Math.max(0, Math.min(1, ((at.x - from.x) * dx + (at.y - from.y) * dy) / span));
+    if (Math.hypot(from.x + dx * t - at.x, from.y + dy * t - at.y) <= r) return true;
+  }
+  return false;
+}
+
+function regionAt(at) {
+  const r = blobRadius();
+  return DATA.regions.find(region => inside(region, at, r)) ?? null;
+}
+
 function bound(region) {
-  const r = blobRadius(), box = bounds(region, r);
+  const r = blobRadius(), box = bounds(region, r), lit = region === hot;
   shade.clearRect(box.x, box.y, box.w, box.h);
   shade.globalCompositeOperation = 'source-over';
   shade.fillStyle = shade.strokeStyle = region.color;
   blob(region, r);
-  paste(box, 0.13);
+  paste(box, lit ? 0.24 : 0.13);
   shade.globalCompositeOperation = 'destination-out';
   blob(region, r - 2.5);
-  paste(box, 0.55);
-  ctx.font = '600 11px system-ui';
-  ctx.fillStyle = alpha(region.color, 0.8);
+  paste(box, lit ? 0.9 : 0.55);
+  ctx.font = lit ? '700 13px system-ui' : '600 11px system-ui';
+  ctx.fillStyle = alpha(region.color, lit ? 1 : 0.8);
   ctx.textAlign = 'center';
   ctx.fillText(region.scope, box.x + box.w / 2, box.top - r - 6);
 }
@@ -651,7 +672,8 @@ function bound(region) {
 function draw() {
   ctx.clearRect(0, 0, W, H);
   taken = [];
-  for (const region of DATA.regions) bound(region);
+  for (const region of DATA.regions) if (region !== hot) bound(region);
+  if (hot) bound(hot);
   for (const p of DATA.points) marker(p, screen([p.x, p.y]));
 }
 
@@ -666,9 +688,16 @@ let pan = null;
 canvas.addEventListener('mousedown', e => { pan = { ox: e.clientX - cam.x, oy: e.clientY - cam.y }; });
 canvas.addEventListener('mouseup', () => { pan = null; });
 canvas.addEventListener('mousemove', e => {
-  if (!pan) return;
-  cam.x = e.clientX - pan.ox;
-  cam.y = e.clientY - pan.oy;
+  if (pan) {
+    cam.x = e.clientX - pan.ox;
+    cam.y = e.clientY - pan.oy;
+    draw();
+    return;
+  }
+  const found = regionAt({ x: e.clientX, y: e.clientY });
+  if (found === hot) return;
+  hot = found;
+  canvas.style.cursor = hot ? 'pointer' : 'default';
   draw();
 });
 canvas.addEventListener('wheel', e => {
