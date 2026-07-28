@@ -79,8 +79,8 @@ defs = [Definition("file_utils", "Module", Path("commons/utils/file_utils.py"), 
 assert [f.rule for f in check(defs, config)] == ["forbidden:module"]
 ```
 
-Path names are reported at line 1 of the module, or of the package `__init__.py`
-where there is one. They carry no `fix`, since renaming a file is not a text
+Path names are reported at the first line of the module, or of the package
+`__init__.py` where there is one. They carry no `fix`, since renaming a file is not a text
 edit, and they are exempt from `duplicate` and `drift`: a module named after
 the one class it holds is a convention, not a collision. Emitted by
 [`dddlint lint`](cli.md#lint), which knows the tree it was pointed at.
