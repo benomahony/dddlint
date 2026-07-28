@@ -439,6 +439,11 @@ _SCATTER_TEMPLATE = """\
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: #0d0f17; overflow: hidden; font-family: system-ui, sans-serif; }
   canvas { display: block; }
+  #legend { position: fixed; bottom: 1.5rem; left: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap; }
+  .leg { display: flex; align-items: center; gap: 0.35rem; font-size: 0.72rem; color: #6b7280; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .tri { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent;
+         border-bottom: 9px solid #8a8a80; }
   #title { position: fixed; top: 1.5rem; left: 1.5rem; font-size: 1.1rem; font-weight: 700;
            color: #e2e4f0; letter-spacing: -0.03em; }
   #caption { position: fixed; top: 3rem; left: 1.5rem; font-size: 0.72rem; color: #6b7280;
@@ -448,6 +453,7 @@ _SCATTER_TEMPLATE = """\
 <body>
 <canvas id="c"></canvas>
 <div id="title">DDD Vocabulary Map</div>
+<div id="legend"></div>
 <div id="caption">Names placed by embedding similarity, flattened with PCA. Distance is
 approximate: neighbours share meaning. Rings outline clusters; a ring in amber holds more
 than one context.</div>
@@ -536,6 +542,13 @@ function draw() {
   }
   for (const p of DATA.points) marker(p, screen([p.x, p.y]));
 }
+
+document.getElementById('legend').innerHTML = DATA.legend
+  .map(l => `<div class="leg"><div class="dot" style="background:${l.color}"></div>${l.scope}</div>`)
+  .join('') +
+  `<div class="leg"><div class="dot" style="background:#8a8a80"></div>noun</div>
+   <div class="leg"><div class="tri"></div>verb</div>
+   <div class="leg"><div class="dot" style="background:transparent;border:2px solid ${OUTLIER}"></div>outlier</div>`;
 
 draw();
 </script>
