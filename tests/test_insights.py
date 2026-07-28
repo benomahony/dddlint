@@ -5,6 +5,7 @@ import pytest
 from dddlint.config import Config, Context, Embeddings
 from dddlint.extract import Definition
 from dddlint.insights import (
+    UNASSIGNED,
     Insight,
     context_outliers,
     map_points,
@@ -122,6 +123,14 @@ def test_map_points_carry_layout_role_scope_and_cluster():
     assert points["Order"].scope == "core"
     assert points["Invoice"].cluster != points["Order"].cluster
     assert points["Invoice"].cluster == points["charge_card"].cluster
+
+
+def test_map_points_call_a_name_outside_every_context_unassigned():
+    definitions = [in_context("Invoice", "billing"), Definition("Widget", "Class", Path("x.py"), 1)]
+    vectors = {"Invoice": EAST, "Widget": NORTH}
+    points = {p.name: p for p in map_points(definitions, vectors, BILLING)}
+    assert points["Widget"].scope == UNASSIGNED
+    assert points["Invoice"].scope == "billing"
 
 
 def test_near_synonyms_ignores_a_plural_of_the_same_token():

@@ -109,7 +109,9 @@ Every run also writes a scatter plot of the vocabulary to `dddmap.html` beside
 the config and opens it: names laid out by PCA so neighbours mean similar things, drawn as
 triangles for verbs and dots for nouns. One named boundary wraps each bounded
 context, stretched around every name that belongs to it, so a context is one
-region however far PCA scatters its names. Hovering a boundary brightens it and
+region however far PCA scatters its names. Names in files no `domains` or
+`contexts` glob claims are `unassigned`: grey, dashed, and inside no boundary,
+because they belong to no bounded context yet. Hovering a boundary brightens it and
 labels every name inside; otherwise one name per cluster is labelled, outliers
 always are, and zooming past 1.4 labels everything. Pan and zoom in the
 browser.

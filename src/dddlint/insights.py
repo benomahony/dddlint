@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from itertools import takewhile
 from pathlib import Path
 
-from .check import scope_of, tokenise
+from .check import owning_scope, scope_of, tokenise
 from .cluster import Vector, centroid, clusters, nearest, project, similarities
 from .config import Config
 from .extract import Definition
@@ -132,6 +132,9 @@ def role_of(kind: str) -> str:
     return "verb" if kind in VERB_KINDS else "noun"
 
 
+UNASSIGNED = "unassigned"
+
+
 @dataclass(frozen=True, slots=True)
 class Point:
     name: str
@@ -162,7 +165,7 @@ def map_points(
             x,
             y,
             role_of(known[name].kind),
-            scope_of(config, known[name].path),
+            owning_scope(config, known[name].path) or UNASSIGNED,
             labels[index],
         )
         for index, ((x, y), name) in enumerate(zip(project(matrix), names, strict=True))

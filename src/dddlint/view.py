@@ -4,7 +4,7 @@ from collections import Counter, defaultdict
 from math import cos, radians, sin
 
 from .config import Config
-from .insights import Insight, Point
+from .insights import UNASSIGNED, Insight, Point
 
 _COLORS = {
     "global": "#7c3aed",
@@ -372,15 +372,18 @@ def _generate_html(config: Config) -> str:
 SERIES = ("#3987e5", "#d95926", "#199e70")
 OTHER = "#8a8a80"
 OUTLIER = "#fab219"
+UNOWNED = "#6b7280"
 
 
 def _scope_colors(points: list[Point]) -> dict[str, str]:
     assert points, "need points to colour"
     assert all(point.scope for point in points), "every point must carry a scope"
-    ranked = [scope for scope, _ in Counter(point.scope for point in points).most_common()]
-    return {
+    counted = Counter(point.scope for point in points)
+    ranked = [scope for scope, _ in counted.most_common() if scope != UNASSIGNED]
+    colors = {
         scope: SERIES[index] if index < len(SERIES) else OTHER for index, scope in enumerate(ranked)
     }
+    return colors | ({UNASSIGNED: UNOWNED} if UNASSIGNED in counted else {})
 
 
 def _gap(a: Point, b: Point) -> float:
@@ -429,7 +432,8 @@ def _regions(points: list[Point], radius: float) -> list[dict]:
     assert radius > 0.0, "radius must be a positive distance"
     grouped: dict[str, list[Point]] = defaultdict(list)
     for point in points:
-        grouped[point.scope].append(point)
+        if point.scope != UNASSIGNED:
+            grouped[point.scope].append(point)
     return [
         {
             "scope": scope,
@@ -479,6 +483,7 @@ def _build_scatter(points: list[Point], insights: list[Insight]) -> dict:
                 "color": colors[point.scope],
                 "outlier": point.name in flagged,
                 "anchor": point.name in anchors,
+                "unassigned": point.scope == UNASSIGNED,
             }
             for point in points
         ],
@@ -517,7 +522,7 @@ _SCATTER_TEMPLATE = """\
 <div id="legend"></div>
 <div id="caption">Names placed by embedding similarity, flattened with PCA. Distance is
 approximate: one named boundary per bounded context, stretched to hold every name that
-belongs to it.</div>
+belongs to it. Dashed grey names belong to no context yet — give them one.</div>
 <script>
 const DATA = __DATA__;
 const OUTLIER = '__OUTLIER__';
@@ -578,7 +583,8 @@ function marker(p, at) {
   ctx.fillStyle = alpha(p.color, 0.85);
   ctx.fill();
   ctx.lineWidth = 2;
-  ctx.strokeStyle = p.outlier ? OUTLIER : '#0d0f17';
+  ctx.setLineDash(p.unassigned && !p.outlier ? [2, 2] : []);
+  ctx.strokeStyle = p.outlier ? OUTLIER : (p.unassigned ? '#c3c2b7' : '#0d0f17');
   const lit = hot !== null && p.scope === hot.scope;
   if (p.outlier || p.anchor || lit || cam.zoom > 1.4) {
     ctx.font = '500 10px system-ui';

@@ -51,14 +51,17 @@ def _scoped(context: Context, path: Path) -> bool:
     return any(fnmatch(str(path), pattern) for pattern in context.include)
 
 
+def owning_scope(config: Config, path: Path) -> str | None:
+    assert isinstance(path, Path), "path must be a Path, not a str"
+    assert config.similarity_threshold >= 0.0, "config must be a loaded Config"
+    owners = [scope.name for scope in config.domains + config.contexts if _scoped(scope, path)]
+    return owners[-1] if owners else None
+
+
 def scope_of(config: Config, path: Path) -> str:
     assert isinstance(path, Path), "path must be a Path, not a str"
     assert config.similarity_threshold >= 0.0, "config must be a loaded Config"
-    name = "global"
-    for scope in config.domains + config.contexts:
-        if _scoped(scope, path):
-            name = scope.name
-    return name
+    return owning_scope(config, path) or "global"
 
 
 def _alias_map(groups: list[SynonymGroup]) -> dict[str, str]:

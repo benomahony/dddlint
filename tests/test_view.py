@@ -3,8 +3,8 @@ import json
 import pytest
 
 from dddlint.config import Config, Context, SynonymGroup
-from dddlint.insights import Insight, Point
-from dddlint.view import OTHER, SERIES, _build_graph, _build_scatter, _generate_html
+from dddlint.insights import UNASSIGNED, Insight, Point
+from dddlint.view import OTHER, SERIES, UNOWNED, _build_graph, _build_scatter, _generate_html
 
 pytestmark = pytest.mark.unit
 
@@ -92,6 +92,27 @@ def test_scatter_bounds_one_region_per_context():
     assert [region["scope"] for region in regions] == ["billing", "core"]
     assert [disc[:2] for disc in regions[0]["discs"]][::2] == [[0.0, 0.0], [1.0, 0.0]]
     assert regions[0]["edges"] == [[[0.0, 0.0], [1.0, 0.0]]]
+
+
+def test_scatter_draws_no_boundary_around_unassigned_names():
+    points = [
+        point("Invoice", "billing", 0, 0.0, 0.0),
+        point("Bill", "billing", 0, 1.0, 0.0),
+        point("Widget", UNASSIGNED, 1, 5.0, 5.0),
+    ]
+    scatter = _build_scatter(points, [])
+    assert [region["scope"] for region in scatter["regions"]] == ["billing"]
+    assert {p["name"]: p["unassigned"] for p in scatter["points"]}["Widget"] is True
+
+
+def test_scatter_keeps_the_series_colours_for_named_contexts():
+    points = [
+        point("Widget", UNASSIGNED, 0),
+        point("Spanner", UNASSIGNED, 0),
+        point("Invoice", "billing", 1),
+    ]
+    colors = {entry["scope"]: entry["color"] for entry in _build_scatter(points, [])["legend"]}
+    assert colors == {"billing": SERIES[0], UNASSIGNED: UNOWNED}
 
 
 def test_scatter_joins_a_scattered_context_into_one_region():
