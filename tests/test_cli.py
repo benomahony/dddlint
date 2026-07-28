@@ -142,3 +142,10 @@ def test_map_writes_the_scatter_when_asked(tmp_path: Path):
     assert page.startswith("<!DOCTYPE html>")
     assert "__DATA__" not in page
     assert "retrieve_purchase" in page
+
+
+def test_map_of_a_subdirectory_finds_the_cache_beside_the_config(tmp_path: Path):
+    root = _repo_with_warm_cache(tmp_path)
+    result = runner.invoke(app, ["map", str(root / "src"), "--config", str(root / "dddlint.yaml")])
+    assert result.exit_code == 0
+    assert "4 names" in result.stdout

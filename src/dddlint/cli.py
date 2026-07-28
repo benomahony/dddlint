@@ -124,14 +124,14 @@ INSIGHT_STYLE: dict[str, str] = {
 }
 
 
-def _vectors(names: list[str], settings: Config, root: Path) -> dict[str, list[float]]:
+def _vectors(names: list[str], settings: Config, base: Path) -> dict[str, list[float]]:
     assert names, "there must be names to embed"
-    assert isinstance(root, Path), "root must be a Path to anchor the cache"
+    assert base.is_dir(), "the cache must be anchored to an existing directory"
     from .embed import embed_names
 
     cache = settings.embeddings.cache
     embeddings = settings.embeddings.model_copy(
-        update={"cache": cache if cache.is_absolute() else root / cache}
+        update={"cache": cache if cache.is_absolute() else base / cache}
     )
     return asyncio.run(embed_names(names, embeddings))
 
@@ -162,7 +162,7 @@ def vocabulary_map(
     if not collected:
         console.print("[bold yellow]no definitions found[/bold yellow]")
         raise typer.Exit(0)
-    vectors = _vectors([d.name for d in collected], settings, root)
+    vectors = _vectors([d.name for d in collected], settings, config.parent)
     insights = near_synonyms(collected, vectors, settings) + context_outliers(
         collected, vectors, settings
     )
