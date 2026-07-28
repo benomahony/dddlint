@@ -56,14 +56,13 @@ The config file itself is validated on every run (see the
 Report project-level vocabulary insights from name embeddings.
 
 ```sh
-dddlint map [ROOT] [--config PATH] [--html FILE]
+dddlint map [ROOT] [--config PATH]
 ```
 
 | Argument / option | Default | Description |
 |---|---|---|
 | `ROOT` | current directory | Directory to scan recursively |
 | `--config PATH` | `ROOT/dddlint.yaml` | Config file to load |
-| `--html FILE` | none | Also write the map as an interactive scatter plot |
 
 Where `lint` compares names token by token, `map` embeds every definition name
 and compares meaning, which catches the pairs that share an idea but no
@@ -84,7 +83,8 @@ The first run downloads the model from
 `embeddings.cache`; later runs only embed names that are new. Always exits `0`,
 so it informs rather than gates. Prints `no definitions found` on an empty tree.
 
-With `--html`, the same run also writes a scatter plot of the vocabulary: names
+Every run also writes a scatter plot of the vocabulary and prints its
+`file://` link: names
 laid out by PCA so neighbours mean similar things, coloured by domain or
 context, drawn as triangles for verbs and dots for nouns. Lines join the members
 of a cluster to its centre, and turn amber when the cluster spans more than one
@@ -92,7 +92,7 @@ context. One name per cluster is labelled, outliers always are, and zooming past
 1.4 labels everything. Pan and zoom in the browser.
 
 ```sh
-dddlint map src/ --html map.html
+dddlint map src/
 ```
 
 ## `html`

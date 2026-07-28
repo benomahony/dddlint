@@ -31,11 +31,8 @@ dddlint lint
 # lint a specific path
 dddlint lint src/
 
-# report vocabulary insights from name embeddings
+# report vocabulary insights from name embeddings, plus a scatter plot to open
 dddlint map
-
-# same, plus an interactive scatter plot of the vocabulary
-dddlint map --html map.html
 
 # open an interactive language graph in the browser
 dddlint html

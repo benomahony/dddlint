@@ -1,4 +1,5 @@
 import json
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -130,14 +131,12 @@ def test_map_on_an_empty_tree_says_so(tmp_path: Path):
     assert "no definitions" in result.stdout
 
 
-def test_map_writes_the_scatter_when_asked(tmp_path: Path):
+def test_map_always_writes_the_scatter(tmp_path: Path):
     root = _repo_with_warm_cache(tmp_path)
-    target = tmp_path / "map.html"
-    result = runner.invoke(
-        app,
-        ["map", str(root), "--config", str(root / "dddlint.yaml"), "--html", str(target)],
-    )
+    result = runner.invoke(app, ["map", str(root), "--config", str(root / "dddlint.yaml")])
     assert result.exit_code == 0
+    target = Path(tempfile.gettempdir()) / "dddlint-map.html"
+    assert f"file://{target}" in result.stdout
     page = target.read_text()
     assert page.startswith("<!DOCTYPE html>")
     assert "__DATA__" not in page

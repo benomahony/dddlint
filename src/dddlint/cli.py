@@ -166,7 +166,6 @@ def _print_insights(insights: list[Insight]) -> None:
 def vocabulary_map(
     root: Annotated[Path | None, typer.Argument()] = None,
     config: Annotated[Path | None, typer.Option()] = None,
-    html: Annotated[Path | None, typer.Option("--html", help="write the map to this file")] = None,
 ) -> None:
     """Report project-level vocabulary insights from name embeddings."""
     root, config = _resolve(root, config)
@@ -185,20 +184,20 @@ def vocabulary_map(
     console.rule(style="dim")
     _print_insights(insights)
     console.print(f"\n[bold cyan]◆ {len(insights)} insights[/bold cyan]")
-    if html is not None:
-        from .insights import map_points
-        from .view import _generate_scatter
+    from .insights import map_points
+    from .view import _generate_scatter
 
-        points = map_points(collected, vectors, settings)
-        html.write_text(_generate_scatter(points, insights))
-        console.print(f"[dim]map written to file://{html.resolve()}[/dim]")
+    points = map_points(collected, vectors, settings)
+    path = _write_temp_html(_generate_scatter(points, insights), "dddlint-map.html")
+    console.print(f"[dim]map written to file://{path}[/dim]")
 
 
-def _write_temp_html(content: str) -> str:
+def _write_temp_html(content: str, name: str = "dddlint-graph.html") -> str:
     import tempfile
 
     assert content, "content must be non-empty"
-    path = Path(tempfile.gettempdir()) / "dddlint-graph.html"
+    assert name.endswith(".html"), "temp file must be an .html file"
+    path = Path(tempfile.gettempdir()) / name
     path.write_text(content)
     assert path.exists(), "graph file must be written"
     return str(path)
