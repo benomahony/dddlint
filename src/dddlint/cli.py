@@ -124,16 +124,31 @@ INSIGHT_STYLE: dict[str, str] = {
 }
 
 
+def _backend_missing(model: str, error: ImportError) -> str:
+    assert model, "the message must name the configured model"
+    assert str(error), "the message must carry the import failure"
+    extra = "embed-local" if model.startswith("sentence-transformers:") else "embed"
+    return (
+        f"'{model}' needs a backend that is not installed.\n"
+        f"install it with: uv add 'dddlint[{extra}]'\n"
+        f"{error}"
+    )
+
+
 def _vectors(names: list[str], settings: Config, base: Path) -> dict[str, list[float]]:
     assert names, "there must be names to embed"
     assert base.is_dir(), "the cache must be anchored to an existing directory"
-    from .embed import embed_names
-
     cache = settings.embeddings.cache
     embeddings = settings.embeddings.model_copy(
         update={"cache": cache if cache.is_absolute() else base / cache}
     )
-    return asyncio.run(embed_names(names, embeddings))
+    try:
+        from .embed import embed_names
+
+        return asyncio.run(embed_names(names, embeddings))
+    except ImportError as error:
+        console.print(f"[bold red]{_backend_missing(settings.embeddings.model, error)}[/bold red]")
+        raise typer.Exit(2) from error
 
 
 def _print_insights(insights: list[Insight]) -> None:

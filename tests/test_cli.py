@@ -5,7 +5,7 @@ import pytest
 from typer.testing import CliRunner
 
 from dddlint import __version__
-from dddlint.cli import _resolve, app
+from dddlint.cli import _backend_missing, _resolve, app
 from dddlint.config import Embeddings
 
 pytestmark = pytest.mark.unit
@@ -149,3 +149,11 @@ def test_map_of_a_subdirectory_finds_the_cache_beside_the_config(tmp_path: Path)
     result = runner.invoke(app, ["map", str(root / "src"), "--config", str(root / "dddlint.yaml")])
     assert result.exit_code == 0
     assert "4 names" in result.stdout
+
+
+def test_missing_backend_message_names_the_extra_to_install():
+    local = _backend_missing("sentence-transformers:all-MiniLM-L6-v2", ImportError("no torch"))
+    assert "dddlint[embed-local]" in local
+    assert "no torch" in local
+    remote = _backend_missing("openai:text-embedding-3-small", ImportError("no httpx"))
+    assert "dddlint[embed]" in remote
