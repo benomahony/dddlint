@@ -124,8 +124,22 @@ def test_map_points_carry_layout_role_scope_and_cluster():
     assert points["Invoice"].cluster == points["charge_card"].cluster
 
 
-def test_near_synonyms_ignores_a_plural_of_the_same_word():
+def test_near_synonyms_ignores_a_plural_of_the_same_token():
     definitions = [definition("Definition"), definition("definitions")]
     vectors = {"Definition": EAST, "definitions": EAST_ISH}
+    config = Config(embeddings=Embeddings(threshold=0.9))
+    assert near_synonyms(definitions, vectors, config) == []
+
+
+def test_near_synonyms_ignores_one_word_family():
+    definitions = [definition("Embeddings"), definition("_embedder"), definition("embed_names")]
+    vectors = {"Embeddings": EAST, "_embedder": EAST_ISH, "embed_names": [0.97, 0.24]}
+    config = Config(embeddings=Embeddings(threshold=0.9))
+    assert near_synonyms(definitions, vectors, config) == []
+
+
+def test_near_synonyms_ignores_names_chained_through_a_shared_word():
+    definitions = [definition("_alias_map"), definition("map_points")]
+    vectors = {"_alias_map": EAST, "map_points": EAST_ISH}
     config = Config(embeddings=Embeddings(threshold=0.9))
     assert near_synonyms(definitions, vectors, config) == []

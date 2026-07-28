@@ -1,6 +1,7 @@
 from collections import defaultdict
 from collections.abc import Mapping
 from dataclasses import dataclass
+from itertools import takewhile
 from pathlib import Path
 
 from .check import scope_of, tokenise
@@ -26,19 +27,26 @@ def threshold_for(config: Config) -> float:
     return threshold
 
 
-def _stem(token: str) -> str:
-    assert token, "token must be non-empty to stem"
-    assert token == token.lower(), "tokens must already be lowercased"
-    if token.endswith("es") and len(token) > 4:
-        token = token[:-2]
-    return token[:-1] if token.endswith("s") and len(token) > 3 else token
+def _same_token(first: str, second: str) -> bool:
+    assert first and second, "tokens must be non-empty to compare"
+    assert first == first.lower() and second == second.lower(), "tokens must be lowercased"
+    if first == second:
+        return True
+    shared = sum(1 for _ in takewhile(lambda pair: pair[0] == pair[1], zip(first, second)))
+    return shared >= 5
 
 
-def _stems(name: str) -> set[str]:
-    assert name, "name must be non-empty"
-    stems = {_stem(token) for token in tokenise(name)}
-    assert stems, "a name must yield at least one stem"
-    return stems
+def _shares_a_token(names: tuple[str, ...]) -> bool:
+    assert len(names) > 1, "need at least two names to compare"
+    assert all(names), "every name must be non-empty"
+    spellings = [tokenise(name) for name in names]
+    return any(
+        _same_token(left, right)
+        for index, first in enumerate(spellings)
+        for second in spellings[index + 1 :]
+        for left in first
+        for right in second
+    )
 
 
 def _first_seen(
@@ -66,7 +74,7 @@ def near_synonyms(
     out: list[Insight] = []
     for group in clusters([vectors[name] for name in names], threshold_for(config)):
         members = tuple(names[index] for index in group)
-        if len(members) < 2 or set.intersection(*(_stems(m) for m in members)):
+        if len(members) < 2 or _shares_a_token(members):
             continue
         score = min(matrix[a][b] for a in group for b in group if a != b)
         out.append(
