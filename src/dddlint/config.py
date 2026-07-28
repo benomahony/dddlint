@@ -28,6 +28,7 @@ class Context(BaseModel):
 class Config(BaseModel):
     similarity_threshold: float = 0.85
     enforce_canonical: bool = True
+    name_uniqueness: bool = True
     forbidden: list[str] = []
     exclude: list[str] = []
     synonyms: list[SynonymGroup] = []

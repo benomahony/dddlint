@@ -21,6 +21,7 @@ RENAME_COMMAND = "dddlint.rename"
 SEVERITY: dict[str, types.DiagnosticSeverity] = {
     "forbidden": types.DiagnosticSeverity.Error,
     "alias": types.DiagnosticSeverity.Warning,
+    "duplicate": types.DiagnosticSeverity.Warning,
     "drift": types.DiagnosticSeverity.Information,
 }
 

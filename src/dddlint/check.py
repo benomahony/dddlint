@@ -121,6 +121,35 @@ def _case_only_across_kinds(names: set[str], kinds: set[str]) -> bool:
     return len(kinds) > 1 and len({n.lower() for n in names}) == 1
 
 
+def _duplicates(definitions: list[Definition], config: Config) -> list[Finding]:
+    assert all(d.name for d in definitions), "every definition must have a name"
+    assert config.name_uniqueness, "only call this when uniqueness is enforced"
+    owned: dict[tuple[str, str], list[Definition]] = defaultdict(list)
+    for definition in definitions:
+        if _is_dunder(definition.name):
+            continue
+        owned[(scope_of(config, definition.path), definition.name)].append(definition)
+    out: list[Finding] = []
+    for (scope, name), sharers in sorted(owned.items()):
+        if len(sharers) < 2:
+            continue
+        for definition in sharers:
+            others = ", ".join(
+                f"{o.kind} at {o.path}:{o.line + 1}" for o in sharers if o is not definition
+            )
+            out.append(
+                Finding(
+                    definition.path,
+                    definition.line,
+                    name,
+                    "duplicate",
+                    f"'{name}' is not unique in {scope}: also {others}",
+                    col=definition.col,
+                )
+            )
+    return out
+
+
 def check(definitions: list[Definition], config: Config) -> list[Finding]:
     assert all(d.line >= 0 for d in definitions), "definition lines must be non-negative"
     assert all(d.name for d in definitions), "every definition must have a name"
@@ -147,6 +176,9 @@ def check(definitions: list[Definition], config: Config) -> list[Finding]:
         by_tokens[key].add(definition.name)
         kinds[key].add(definition.kind)
         first.setdefault(key, definition)
+    if config.name_uniqueness:
+        out.extend(_duplicates(definitions, config))
+
     for key, names in by_tokens.items():
         if len(names) > 1 and not _case_only_across_kinds(names, kinds[key]):
             definition = first[key]

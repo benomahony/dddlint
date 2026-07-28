@@ -86,6 +86,47 @@ def test_drift_flags_case_only_difference_within_one_kind():
     assert any(f.rule == "drift" for f in check(defs, config))
 
 
+def test_duplicate_flags_one_name_on_two_kinds():
+    defs = [
+        Definition("balance", "Method", Path("a.py"), 3),
+        Definition("balance", "Variable", Path("b.py"), 9),
+    ]
+    findings = [f for f in check(defs, Config()) if f.rule == "duplicate"]
+    assert len(findings) == 2
+    assert "Variable at b.py:10" in findings[0].message
+    assert "Method at a.py:4" in findings[1].message
+
+
+def test_duplicate_is_opt_out():
+    defs = [
+        Definition("balance", "Method", Path("a.py"), 3),
+        Definition("balance", "Variable", Path("b.py"), 9),
+    ]
+    assert not any(f.rule == "duplicate" for f in check(defs, Config(name_uniqueness=False)))
+
+
+def test_duplicate_allows_a_name_owned_by_two_contexts():
+    config = Config(
+        contexts=[
+            Context(name="billing", include=["billing/*"]),
+            Context(name="shipping", include=["shipping/*"]),
+        ]
+    )
+    defs = [
+        Definition("Invoice", "Class", Path("billing/a.py"), 1),
+        Definition("Invoice", "Class", Path("shipping/b.py"), 1),
+    ]
+    assert not any(f.rule == "duplicate" for f in check(defs, config))
+
+
+def test_duplicate_ignores_dunder_names():
+    defs = [
+        Definition("__init__", "Function", Path("a.py"), 1),
+        Definition("__init__", "Function", Path("b.py"), 1),
+    ]
+    assert not any(f.rule == "duplicate" for f in check(defs, Config()))
+
+
 def test_drift_flags_visibility_only_difference():
     config = Config()
     defs = [
