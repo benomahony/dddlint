@@ -29,6 +29,10 @@ embed = [
     "numpy>=2",
     "pydantic-ai-slim>=2.19.0",
 ]
+embed-local = [
+    "numpy>=2",
+    "pydantic-ai-slim[sentence-transformers]>=2.19.0",
+]
 
 [build-system]
 requires = ["hatchling"]

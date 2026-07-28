@@ -9,7 +9,7 @@ class Embeddings(BaseModel):
     dimensions: int | None = None
     batch_size: int = 128
     cache: Path = Path(".dddlint/embeddings.json")
-    threshold: float | None = None
+    threshold: float = 0.6
     outlier_margin: float = 0.05
 
 

@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from dddlint.config import Config, Context
+from dddlint.config import Config, Context, Embeddings
 from dddlint.extract import Definition
 from dddlint.insights import (
     Insight,
@@ -16,12 +16,12 @@ from dddlint.insights import (
 pytestmark = pytest.mark.unit
 
 
-def test_threshold_falls_back_to_similarity_threshold():
-    assert threshold_for(Config(similarity_threshold=0.7)) == 0.7
+def test_threshold_defaults_below_the_scope_name_scale():
+    assert threshold_for(Config()) == 0.6
 
 
-def test_threshold_prefers_the_embeddings_override():
-    config = Config(similarity_threshold=0.99)
+def test_threshold_reads_the_configured_cosine():
+    config = Config()
     config.embeddings.threshold = 0.9
     assert threshold_for(config) == 0.9
 
@@ -44,7 +44,7 @@ def definition(name: str) -> Definition:
 def test_near_synonyms_reports_close_names_with_no_shared_token():
     definitions = [definition("fetch_order"), definition("retrieve_purchase")]
     vectors = {"fetch_order": EAST, "retrieve_purchase": EAST_ISH}
-    insights = near_synonyms(definitions, vectors, Config(similarity_threshold=0.9))
+    insights = near_synonyms(definitions, vectors, Config(embeddings=Embeddings(threshold=0.9)))
     assert [i.rule for i in insights] == ["near-synonym"]
     assert insights[0].names == ("fetch_order", "retrieve_purchase")
     assert insights[0].score == pytest.approx(0.96)
@@ -53,13 +53,13 @@ def test_near_synonyms_reports_close_names_with_no_shared_token():
 def test_near_synonyms_ignores_names_that_already_share_vocabulary():
     definitions = [definition("fetch_order"), definition("order_fetcher")]
     vectors = {"fetch_order": EAST, "order_fetcher": EAST_ISH}
-    assert near_synonyms(definitions, vectors, Config(similarity_threshold=0.9)) == []
+    assert near_synonyms(definitions, vectors, Config(embeddings=Embeddings(threshold=0.9))) == []
 
 
 def test_near_synonyms_ignores_distant_names():
     definitions = [definition("fetch_order"), definition("send_invoice")]
     vectors = {"fetch_order": EAST, "send_invoice": NORTH}
-    assert near_synonyms(definitions, vectors, Config(similarity_threshold=0.9)) == []
+    assert near_synonyms(definitions, vectors, Config(embeddings=Embeddings(threshold=0.9))) == []
 
 
 def in_context(name: str, folder: str) -> Definition:

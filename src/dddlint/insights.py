@@ -20,10 +20,10 @@ class Insight:
 
 
 def threshold_for(config: Config) -> float:
-    assert config.similarity_threshold >= 0.0, "similarity_threshold must be non-negative"
     threshold = config.embeddings.threshold
-    assert threshold is None or threshold >= 0.0, "embeddings threshold must be non-negative"
-    return config.similarity_threshold if threshold is None else threshold
+    assert 0.0 <= threshold <= 1.0, "embeddings threshold must be a cosine in [0, 1]"
+    assert config.embeddings.model, "an embedding model must be configured"
+    return threshold
 
 
 def _first_seen(

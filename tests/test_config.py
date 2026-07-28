@@ -33,7 +33,7 @@ def test_load_config_rejects_non_mapping_root(tmp_path: Path):
 def test_embeddings_defaults():
     config = Config()
     assert config.embeddings.model.startswith("sentence-transformers:")
-    assert config.embeddings.threshold is None
+    assert config.embeddings.threshold == 0.6
 
 
 def test_embeddings_overrides(tmp_path: Path):
