@@ -1,5 +1,7 @@
 import json
+import zlib
 from collections import Counter, defaultdict
+from math import cos, radians, sin
 
 from .config import Config
 from .insights import Insight, Point
@@ -381,6 +383,63 @@ def _scope_colors(points: list[Point]) -> dict[str, str]:
     }
 
 
+def _gap(a: Point, b: Point) -> float:
+    assert a.name and b.name, "both points must have names"
+    assert a is not b, "a point has no gap to itself"
+    return ((a.x - b.x) ** 2 + (a.y - b.y) ** 2) ** 0.5
+
+
+def _spacing(points: list[Point]) -> float:
+    assert points, "need points to measure spacing"
+    assert all(point.name for point in points), "every point must have a name"
+    if len(points) < 2:
+        return 1.0
+    gaps = sorted(min(_gap(p, o) for o in points if o is not p) for p in points)
+    return gaps[len(gaps) // 2] or 1.0
+
+
+def _spanning_edges(members: list[Point], reach: float) -> list[list[list[float]]]:
+    assert members, "need members to span"
+    assert reach > 0.0, "reach must be a positive distance"
+    reached, waiting, out = [members[0]], members[1:], []
+    while waiting:
+        near, joining = min(
+            ((a, b) for a in reached for b in waiting), key=lambda pair: _gap(*pair)
+        )
+        waiting.remove(joining)
+        reached.append(joining)
+        if _gap(near, joining) <= reach:
+            out.append([[near.x, near.y], [joining.x, joining.y]])
+    return out
+
+
+def _lumps(member: Point, radius: float) -> list[list[float]]:
+    assert member.name, "a lump needs a named point"
+    assert radius > 0.0, "radius must be a positive distance"
+    seed = zlib.crc32(member.name.encode())
+    angle = radians((seed >> 8) % 360)
+    return [
+        [member.x, member.y, 0.85 + (seed % 41) / 100.0],
+        [member.x + cos(angle) * radius * 0.6, member.y + sin(angle) * radius * 0.6, 0.7],
+    ]
+
+
+def _regions(points: list[Point], reach: float, radius: float) -> list[dict]:
+    assert points, "need points to bound"
+    assert reach > 0.0, "reach must be a positive distance"
+    grouped: dict[str, list[Point]] = defaultdict(list)
+    for point in points:
+        grouped[point.scope].append(point)
+    return [
+        {
+            "scope": scope,
+            "discs": [lump for m in members for lump in _lumps(m, radius)],
+            "edges": _spanning_edges(members, reach),
+        }
+        for scope, members in sorted(grouped.items())
+    ]
+
+
 def _links(points: list[Point]) -> list[dict]:
     assert points, "need points to link"
     assert all(point.cluster >= 0 for point in points), "cluster labels must be non-negative"
@@ -431,10 +490,11 @@ def _build_scatter(points: list[Point], insights: list[Insight]) -> dict:
     assert all(point.name for point in points), "every point must have a name"
     assert all(insight.rule for insight in insights), "every insight must carry a rule"
     if not points:
-        return {"points": [], "links": [], "legend": []}
+        return {"points": [], "links": [], "regions": [], "legend": [], "radius": 0.0}
     colors = _scope_colors(points)
     flagged = {name for i in insights if i.rule == "context-outlier" for name in i.names}
     anchors = _anchors(points)
+    spacing = _spacing(points)
     return {
         "points": [
             {
@@ -450,6 +510,8 @@ def _build_scatter(points: list[Point], insights: list[Insight]) -> dict:
             for point in points
         ],
         "links": _links(points),
+        "regions": _regions(points, spacing * 3.0, spacing * 0.55),
+        "radius": spacing * 0.55,
         "legend": [{"scope": scope, "color": color} for scope, color in colors.items()],
     }
 
@@ -611,8 +673,8 @@ def _generate_scatter(points: list[Point], insights: list[Insight]) -> str:
     scatter = _build_scatter(points, insights)
     assert "points" in scatter and "links" in scatter, "scatter must have points and links"
     colors = {entry["scope"]: entry["color"] for entry in scatter["legend"]}
-    for link in scatter["links"]:
-        link["color"] = colors[link["scope"]]
+    for shape in scatter["links"] + scatter["regions"]:
+        shape["color"] = colors[shape["scope"]]
     html = _SCATTER_TEMPLATE.replace("__DATA__", json.dumps(scatter)).replace(
         "__OUTLIER__", OUTLIER
     )

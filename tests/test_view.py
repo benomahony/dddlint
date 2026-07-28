@@ -94,6 +94,41 @@ def test_scatter_links_only_clusters_with_company():
     assert len(links[0]["spokes"]) == 1
 
 
+def test_scatter_bounds_one_region_per_context():
+    points = [
+        point("Invoice", "billing", 0, 0.0, 0.0),
+        point("Bill", "billing", 0, 1.0, 0.0),
+        point("Order", "core", 1, 5.0, 5.0),
+    ]
+    regions = _build_scatter(points, [])["regions"]
+    assert [region["scope"] for region in regions] == ["billing", "core"]
+    assert [disc[:2] for disc in regions[0]["discs"]][::2] == [[0.0, 0.0], [1.0, 0.0]]
+    assert regions[0]["edges"] == [[[0.0, 0.0], [1.0, 0.0]]]
+
+
+def test_scatter_leaves_far_apart_members_of_a_context_unjoined():
+    points = [
+        point("Invoice", "billing", 0, 0.0, 0.0),
+        point("Bill", "billing", 0, 1.0, 0.0),
+        point("Statement", "billing", 0, 90.0, 0.0),
+    ]
+    region = _build_scatter(points, [])["regions"][0]
+    assert len(region["discs"]) == 6
+    assert region["edges"] == [[[0.0, 0.0], [1.0, 0.0]]]
+
+
+def test_scatter_gives_each_name_its_own_lopsided_lump():
+    points = [point("Invoice", "billing", 0, 0.0, 0.0), point("Bill", "billing", 0, 1.0, 0.0)]
+    discs = _build_scatter(points, [])["regions"][0]["discs"]
+    assert len({disc[2] for disc in discs}) > 1
+    assert all(0.6 <= disc[2] <= 1.3 for disc in discs)
+
+
+def test_scatter_sizes_blobs_from_the_typical_spacing():
+    points = [point("Invoice", "billing", 0, 0.0, 0.0), point("Bill", "billing", 0, 2.0, 0.0)]
+    assert _build_scatter(points, [])["radius"] == pytest.approx(1.1)
+
+
 def test_scatter_marks_a_cluster_spanning_two_scopes_as_mixed():
     points = [point("Invoice", "billing", 0), point("Order", "core", 0, 1.0, 0.0)]
     assert _build_scatter(points, [])["links"][0]["mixed"] is True
