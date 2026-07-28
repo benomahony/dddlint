@@ -520,6 +520,15 @@ function screen(p) {
   return { x: (f.x - W / 2) * cam.zoom + W / 2 + cam.x, y: (f.y - H / 2) * cam.zoom + H / 2 + cam.y };
 }
 
+let taken = [];
+
+function labelFits(at, width) {
+  const box = { x0: at.x - width / 2, x1: at.x + width / 2, y0: at.y - 9, y1: at.y };
+  const clash = taken.some(t => box.x0 < t.x1 && box.x1 > t.x0 && box.y0 < t.y1 && box.y1 > t.y0);
+  if (!clash) taken[taken.length] = box;
+  return !clash;
+}
+
 function marker(p, at) {
   ctx.beginPath();
   if (p.role === 'verb') {
@@ -536,9 +545,12 @@ function marker(p, at) {
   ctx.strokeStyle = p.outlier ? OUTLIER : '#0d0f17';
   if (p.outlier || p.anchor || cam.zoom > 1.4) {
     ctx.font = '500 10px system-ui';
-    ctx.fillStyle = p.outlier ? OUTLIER : '#c3c2b7';
     ctx.textAlign = 'center';
-    ctx.fillText(p.name, at.x, at.y - 11);
+    const spot = { x: at.x, y: at.y - 11 };
+    if (p.outlier || labelFits(spot, ctx.measureText(p.name).width)) {
+      ctx.fillStyle = p.outlier ? OUTLIER : '#c3c2b7';
+      ctx.fillText(p.name, spot.x, spot.y);
+    }
   }
   ctx.stroke();
 }
@@ -550,6 +562,7 @@ function alpha(hex, a) {
 
 function draw() {
   ctx.clearRect(0, 0, W, H);
+  taken = [];
   for (const link of DATA.links) {
     const at = screen(link.anchor);
     ctx.strokeStyle = alpha(link.mixed ? OUTLIER : link.color, 0.35);
