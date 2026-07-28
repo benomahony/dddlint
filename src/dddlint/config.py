@@ -10,6 +10,7 @@ class Embeddings(BaseModel):
     batch_size: int = 128
     cache: Path = Path(".dddlint/embeddings.json")
     threshold: float | None = None
+    outlier_margin: float = 0.05
 
 
 class SynonymGroup(BaseModel):

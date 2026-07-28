@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 import numpy as np
 
@@ -41,7 +41,7 @@ def centroid(vectors: Sequence[Vector]) -> list[float]:
     return [float(component) for component in mean / (norm or 1.0)]
 
 
-def nearest(vector: Vector, centroids: dict[str, Vector]) -> tuple[str, float]:
+def nearest(vector: Vector, centroids: Mapping[str, Vector]) -> tuple[str, float]:
     assert centroids, "need at least one centroid to compare against"
     assert len(vector) > 0, "vector must have components to compare"
     scores = {

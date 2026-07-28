@@ -51,6 +51,16 @@ def _scoped(context: Context, path: Path) -> bool:
     return any(fnmatch(str(path), pattern) for pattern in context.include)
 
 
+def scope_of(config: Config, path: Path) -> str:
+    assert isinstance(path, Path), "path must be a Path, not a str"
+    assert config.similarity_threshold >= 0.0, "config must be a loaded Config"
+    name = "global"
+    for scope in config.domains + config.contexts:
+        if _scoped(scope, path):
+            name = scope.name
+    return name
+
+
 def _alias_map(groups: list[SynonymGroup]) -> dict[str, str]:
     out: dict[str, str] = {}
     for group in groups:

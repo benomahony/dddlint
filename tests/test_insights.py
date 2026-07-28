@@ -2,9 +2,9 @@ from pathlib import Path
 
 import pytest
 
-from dddlint.config import Config
+from dddlint.config import Config, Context
 from dddlint.extract import Definition
-from dddlint.insights import Insight, near_synonyms, threshold_for
+from dddlint.insights import Insight, context_outliers, near_synonyms, threshold_for
 
 pytestmark = pytest.mark.unit
 
@@ -53,3 +53,45 @@ def test_near_synonyms_ignores_distant_names():
     definitions = [definition("fetch_order"), definition("send_invoice")]
     vectors = {"fetch_order": EAST, "send_invoice": NORTH}
     assert near_synonyms(definitions, vectors, Config(similarity_threshold=0.9)) == []
+
+
+def in_context(name: str, folder: str) -> Definition:
+    return Definition(name, "Class", Path(f"src/{folder}/a.py"), 2)
+
+
+BILLING = Config(
+    contexts=[
+        Context(name="billing", include=["**/billing/**"]),
+        Context(name="core", include=["**/core/**"]),
+    ]
+)
+
+
+def test_context_outlier_flags_a_name_clustering_with_another_context():
+    definitions = [
+        in_context("Invoice", "billing"),
+        in_context("InvoiceLine", "billing"),
+        in_context("Order", "core"),
+        in_context("InvoiceTotal", "core"),
+    ]
+    vectors = {
+        "Invoice": EAST,
+        "InvoiceLine": EAST_ISH,
+        "Order": NORTH,
+        "InvoiceTotal": [0.98, 0.2],
+    }
+    insights = context_outliers(definitions, vectors, BILLING)
+    assert [i.names for i in insights] == [("InvoiceTotal",)]
+    assert "billing" in insights[0].message and "core" in insights[0].message
+
+
+def test_context_outlier_stays_quiet_when_names_sit_in_their_own_context():
+    definitions = [in_context("Invoice", "billing"), in_context("Order", "core")]
+    vectors = {"Invoice": EAST, "Order": NORTH}
+    assert context_outliers(definitions, vectors, BILLING) == []
+
+
+def test_context_outlier_needs_at_least_two_contexts():
+    definitions = [in_context("Invoice", "billing"), in_context("Order", "billing")]
+    vectors = {"Invoice": EAST, "Order": NORTH}
+    assert context_outliers(definitions, vectors, BILLING) == []
