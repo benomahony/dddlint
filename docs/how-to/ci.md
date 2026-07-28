@@ -8,7 +8,7 @@ Fail the build when the codebase drifts from its agreed vocabulary.
 
 ## GitHub Actions
 
-Add a step that runs the linter with `uvx` — no install or lockfile needed.
+Add a step that runs the linter with `uvx`, so there is no install or lockfile to manage.
 
 ```yaml title=".github/workflows/dddlint.yml"
 name: dddlint
@@ -34,8 +34,8 @@ uvx dddlint lint
 
 | Exit code | Meaning |
 |---|---|
-| `0` | No findings — the build passes |
-| `1` | Findings printed to stdout — the build fails |
+| `0` | No findings, so the build passes |
+| `1` | Findings printed to stdout, so the build fails |
 
 ## Lint only part of the repo
 

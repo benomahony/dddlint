@@ -1,6 +1,6 @@
 # dddlint
 
-Polyglot ubiquitous language linter. Reads class, function, method, and type names across **306 languages** and enforces them against a domain vocabulary — banned terms, non-canonical synonyms, and one concept spelled multiple ways.
+Polyglot ubiquitous language linter. Reads class, function, method, and type names across **306 languages** and enforces them against a domain vocabulary: banned terms, non-canonical synonyms, and one concept spelled multiple ways.
 
 Works with any language tree-sitter recognises, without per-language queries. Slots into pre-commit hooks, CI pipelines, and coding agent loops via a non-zero exit code on findings. Ships with an LSP server for inline editor diagnostics and rename code actions.
 
@@ -59,7 +59,7 @@ domains:
       - canonical: order
         aliases: [purchase]
 
-# bounded contexts — same structure as domains, applied after (context wins on conflict)
+# bounded contexts, same structure as domains, applied after (context wins on conflict)
 contexts:
   - name: billing
     include: ["**/billing/**"]
@@ -76,7 +76,7 @@ Global rules apply everywhere. Domain rules apply to matching paths. Context rul
 | Rule | Severity | Description |
 |---|---|---|
 | `forbidden` | error | A definition name contains a banned term |
-| `alias` | warning | A definition uses a non-canonical synonym — includes a rename suggestion |
+| `alias` | warning | A definition uses a non-canonical synonym, with a rename suggestion |
 | `drift` | info | The same concept is spelled multiple ways across the codebase |
 | `config:forbidden-canonical-clash` | error | A term is both forbidden and a canonical synonym |
 | `config:alias-conflict` | warning | The same alias maps to different canonicals in different scopes |
@@ -88,7 +88,7 @@ Config rules are checked against `dddlint.yaml` itself on every run.
 
 The LSP server publishes diagnostics on file open and save, scanning the entire workspace each time so cross-file drift is always caught. Alias findings include a code action to rename the identifier to the canonical term with case preserved (`ClientRepo` → `CustomerRepo`, `get_client` → `get_customer`).
 
-**Neovim** — add to `init.lua`:
+**Neovim**, add to `init.lua`:
 
 ```lua
 vim.api.nvim_create_autocmd("BufReadPost", {
@@ -105,9 +105,9 @@ vim.api.nvim_create_autocmd("BufReadPost", {
 })
 ```
 
-The autocmd fires on every buffer, attaches only when `dddlint.yaml` is found, and is language-agnostic — no filetype list required.
+The autocmd fires on every buffer, attaches only when `dddlint.yaml` is found, and is language-agnostic, so no filetype list is required.
 
-**VS Code** — via a generic LSP client extension:
+**VS Code**, via a generic LSP client extension:
 
 ```json
 {
@@ -120,7 +120,7 @@ The autocmd fires on every buffer, attaches only when `dddlint.yaml` is found, a
 }
 ```
 
-**Helix** — `.helix/languages.toml`:
+**Helix**, `.helix/languages.toml`:
 
 ```toml
 [language-server.dddlint]
@@ -132,7 +132,7 @@ args = ["lsp"]
 
 Extraction is powered by [`tree-sitter-language-pack`](https://github.com/Goldziher/tree-sitter-language-pack), which covers 306 languages including:
 
-Ada · Agda · Arduino · Bash · C · C++ · C# · Clojure · COBOL · Crystal · CSS · D · Dart · Dockerfile · Elixir · Elm · Erlang · F# · Fortran · GDScript · GLSL · Go · GraphQL · Groovy · Hack · Haskell · HCL · HTML · Java · JavaScript · Julia · Kotlin · Lean · Lua · MATLAB · Mojo · Nix · OCaml · Odin · Pascal · Perl · PHP · PowerShell · Prolog · Python · R · Racket · Ruby · Rust · Scala · Scheme · Solidity · SQL · Svelte · Swift · Terraform · TLA+ · TOML · TypeScript · V · VHDL · Vim · Vue · WebAssembly · XML · YAML · Zig — and [243 more](https://github.com/Goldziher/tree-sitter-language-pack).
+Ada · Agda · Arduino · Bash · C · C++ · C# · Clojure · COBOL · Crystal · CSS · D · Dart · Dockerfile · Elixir · Elm · Erlang · F# · Fortran · GDScript · GLSL · Go · GraphQL · Groovy · Hack · Haskell · HCL · HTML · Java · JavaScript · Julia · Kotlin · Lean · Lua · MATLAB · Mojo · Nix · OCaml · Odin · Pascal · Perl · PHP · PowerShell · Prolog · Python · R · Racket · Ruby · Rust · Scala · Scheme · Solidity · SQL · Svelte · Swift · Terraform · TLA+ · TOML · TypeScript · V · VHDL · Vim · Vue · WebAssembly · XML · YAML · Zig, and [243 more](https://github.com/Goldziher/tree-sitter-language-pack).
 
 ## CI
 

@@ -59,7 +59,7 @@ repo.py
 ```
 
 dddlint exited with code `1`. That non-zero exit is what makes it useful in CI
-and commit hooks — the build fails until the language is consistent.
+and commit hooks: the build fails until the language is consistent.
 
 ## 4. Fix the drift
 

@@ -13,7 +13,7 @@ offers a one-click rename from an alias to its canonical term.
 
 - It publishes diagnostics on **file open** and **file save**.
 - Each run scans the **entire workspace**, so cross-file
-  [drift](../reference/rules.md#drift) is always caught — not just the open file.
+  [drift](../reference/rules.md#drift) is always caught, not just the open file.
 - [Alias findings](../reference/rules.md#alias) carry a code action that renames
   the identifier to the canonical term with case preserved
   (`ClientRepo` → `CustomerRepo`, `get_client` → `get_customer`).
@@ -27,7 +27,7 @@ dddlint lsp
 ## Neovim
 
 Attach the server on any buffer inside a project that has a `dddlint.yaml`. No
-filetype list needed — it is language-agnostic.
+filetype list needed, since it is language-agnostic.
 
 ```lua title="init.lua"
 vim.api.nvim_create_autocmd("BufReadPost", {

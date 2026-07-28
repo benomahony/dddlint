@@ -7,7 +7,7 @@ icon: lucide/spell-check
 **Polyglot ubiquitous language linter for codebases and coding agents.**
 
 dddlint reads class, function, method, and type names across **306 languages**
-and enforces them against a domain vocabulary — banned terms, non-canonical
+and enforces them against a domain vocabulary: banned terms, non-canonical
 synonyms, and one concept spelled several ways.
 
 It works with any language tree-sitter recognises, without per-language
@@ -20,8 +20,8 @@ diagnostics with rename code actions.
 ## The idea in one example
 
 A team agrees `order` is the canonical term. Someone commits a
-`process_transaction` method. dddlint flags it — in CI, in a commit hook, or
-right in the editor — and suggests the rename to `process_order`.
+`process_transaction` method. dddlint flags it in CI, in a commit hook, or
+right in the editor, and suggests the rename to `process_order`.
 
 ```yaml title="dddlint.yaml"
 synonyms:

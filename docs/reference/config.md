@@ -16,7 +16,7 @@ empty file is valid and produces no findings.
 | `forbidden` | list[str] | `[]` | Terms that must never appear in a definition name |
 | `synonyms` | list[[SynonymGroup](#synonymgroup)] | `[]` | Canonical terms and their aliases |
 | `domains` | list[[Scope](#scope)] | `[]` | Path-scoped rules for high-level business domains |
-| `contexts` | list[[Scope](#scope)] | `[]` | Path-scoped rules applied after domains — win on conflict |
+| `contexts` | list[[Scope](#scope)] | `[]` | Path-scoped rules applied after domains, win on conflict |
 
 ## SynonymGroup
 

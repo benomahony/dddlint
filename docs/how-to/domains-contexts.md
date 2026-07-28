@@ -14,7 +14,7 @@ layers of scope.
 |---|---|---|
 | Global | Every file | Base |
 | `domains` | Files matching `include` globs | Adds to global |
-| `contexts` | Files matching `include` globs | Adds last — **wins on conflict** |
+| `contexts` | Files matching `include` globs | Adds last, **wins on conflict** |
 
 Domain and context rules are **added** to the global rules for matching files;
 they never remove a global rule. When a domain and a context disagree on an

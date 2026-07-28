@@ -61,7 +61,7 @@ Frozen dataclass describing one extracted name.
 | Field | Type | Description |
 |---|---|---|
 | `name` | str | The identifier as written in source |
-| `kind` | str | `"Class"`, `"Function"`, `"Method"`, … |
+| `kind` | str | `"Class"`, `"Function"`, `"Method"`, ... |
 | `path` | Path | File the definition came from |
 | `line` | int | 0-based line of the definition |
 | `col` | int | 0-based column of the name (default `0`) |
@@ -95,7 +95,7 @@ Frozen dataclass describing one violation.
 | `path` | Path | File the finding is in |
 | `line` | int | Line of the offending definition |
 | `name` | str | The definition name |
-| `rule` | str | Rule name — see the [rules reference](rules.md) |
+| `rule` | str | Rule name, see the [rules reference](rules.md) |
 | `message` | str | Human-readable explanation |
 | `col` | int | Column of the name (default `0`) |
 | `fix` | str \| None | Suggested rename, for `alias` findings (default `None`) |

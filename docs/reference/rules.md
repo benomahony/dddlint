@@ -39,7 +39,7 @@ assert "manager" in findings[0].message
 ### alias
 
 **Severity: warning.** A definition uses a non-canonical synonym. The finding
-carries a `fix` — the name rewritten to the canonical term with case preserved.
+carries a `fix`, the name rewritten to the canonical term with case preserved.
 Emitted only when `enforce_canonical` is `true`.
 
 ```python

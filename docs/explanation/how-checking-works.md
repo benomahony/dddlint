@@ -31,7 +31,7 @@ configuration. The grammar is downloaded on first use and cached.
 ## 3. Extraction
 
 The recognised source is parsed and flattened into a list of `Definition`
-records — one per class, function, method, struct, interface, enum, trait,
+records, one per class, function, method, struct, interface, enum, trait,
 variable, or constant. dddlint deliberately reads only **names** (plus their
 location), never bodies. That is what keeps it language-agnostic: it never
 needs a per-language query, only the universal notion of "a named definition".
@@ -47,9 +47,9 @@ case-insensitive and naming-convention-agnostic by construction.
 
 Two independent passes run over the definitions:
 
-- **Per-definition** — for each name, check its tokens against the forbidden
+- **Per-definition**: for each name, check its tokens against the forbidden
   set and the alias map that apply to that file's path.
-- **Cross-codebase drift** — group every name by its sorted token set; any group
+- **Cross-codebase drift**: group every name by its sorted token set; any group
   with more than one distinct spelling is a drift finding.
 
 The config file is also checked against itself in the same run, so a
@@ -59,19 +59,19 @@ contradictory vocabulary surfaces before it can mask real findings.
 
 Forbidden terms and alias maps are assembled per file in a fixed order:
 
-1. **Global** rules — always included.
-2. **Domain** rules — merged in when the file path matches the domain's
+1. **Global** rules are always included.
+2. **Domain** rules are merged in when the file path matches the domain's
    `include` globs.
-3. **Context** rules — merged in last, so a context can override a domain.
+3. **Context** rules are merged in last, so a context can override a domain.
 
 Because the layers are *merged*, a domain or context can only ever add rules or
-override an alias mapping for its files — it can never switch off a global rule.
+override an alias mapping for its files. It can never switch off a global rule.
 "Context wins" falls out of ordering: the last writer of an alias mapping is the
 one that takes effect.
 
 ## Why scan the whole workspace every time
 
-Drift is a property of the whole codebase, not a single file — you cannot know
+Drift is a property of the whole codebase, not a single file. You cannot know
 that `getUser` and `get_user` disagree by looking at either one alone. So both
 `dddlint lint` and the [LSP server](../how-to/editor-lsp.md) always scan the
 entire tree, even when the editor only asked about one open file. It costs more

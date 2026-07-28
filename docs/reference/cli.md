@@ -5,7 +5,7 @@ icon: lucide/terminal
 # CLI reference
 
 Installed as `dddlint`. Every command auto-detects each file's language and
-downloads the tree-sitter grammar on first use — nothing to configure.
+downloads the tree-sitter grammar on first use, so there is nothing to configure.
 
 ```sh
 dddlint [OPTIONS] COMMAND [ARGS]
@@ -55,8 +55,8 @@ Open an interactive language graph in the browser.
 dddlint html [ROOT] [--config PATH]
 ```
 
-Renders the configured vocabulary — canonical terms, aliases, domains, and
-contexts — to a temporary HTML file and opens it in your default browser. Takes
+Renders the configured vocabulary (canonical terms, aliases, domains, and
+contexts) to a temporary HTML file and opens it in your default browser. Takes
 the same `ROOT` and `--config` arguments as `lint`.
 
 ## `lsp`
