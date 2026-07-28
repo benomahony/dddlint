@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .check import scope_of, tokenise
-from .cluster import Vector, centroid, clusters, nearest, similarities
+from .cluster import Vector, centroid, clusters, nearest, project, similarities
 from .config import Config
 from .extract import Definition
 
@@ -97,3 +97,49 @@ def context_outliers(
             )
         )
     return sorted(out, key=lambda insight: -insight.score)
+
+
+VERB_KINDS = frozenset({"Function", "Method"})
+
+
+def role_of(kind: str) -> str:
+    assert kind, "kind must be non-empty to classify"
+    assert isinstance(kind, str), "kind must be a string"
+    return "verb" if kind in VERB_KINDS else "noun"
+
+
+@dataclass(frozen=True, slots=True)
+class Point:
+    name: str
+    x: float
+    y: float
+    role: str
+    scope: str
+    cluster: int
+
+
+def map_points(
+    definitions: list[Definition], vectors: Mapping[str, Vector], config: Config
+) -> list[Point]:
+    assert all(d.name for d in definitions), "every definition must have a name"
+    assert all(vectors.values()), "every vector must have components"
+    known = _first_seen(definitions, vectors)
+    if not known:
+        return []
+    names = sorted(known)
+    matrix = [vectors[name] for name in names]
+    labels: dict[int, int] = {}
+    for label, group in enumerate(clusters(matrix, threshold_for(config))):
+        labels |= {index: label for index in group}
+    assert len(labels) == len(names), "every name must land in exactly one cluster"
+    return [
+        Point(
+            name,
+            x,
+            y,
+            role_of(known[name].kind),
+            scope_of(config, known[name].path),
+            labels[index],
+        )
+        for index, ((x, y), name) in enumerate(zip(project(matrix), names, strict=True))
+    ]

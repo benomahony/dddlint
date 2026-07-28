@@ -4,7 +4,14 @@ import pytest
 
 from dddlint.config import Config, Context
 from dddlint.extract import Definition
-from dddlint.insights import Insight, context_outliers, near_synonyms, threshold_for
+from dddlint.insights import (
+    Insight,
+    context_outliers,
+    map_points,
+    near_synonyms,
+    role_of,
+    threshold_for,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -95,3 +102,23 @@ def test_context_outlier_needs_at_least_two_contexts():
     definitions = [in_context("Invoice", "billing"), in_context("Order", "billing")]
     vectors = {"Invoice": EAST, "Order": NORTH}
     assert context_outliers(definitions, vectors, BILLING) == []
+
+
+def test_role_splits_nouns_from_verbs():
+    assert role_of("Class") == "noun"
+    assert role_of("Method") == "verb"
+    assert role_of("Constant") == "noun"
+
+
+def test_map_points_carry_layout_role_scope_and_cluster():
+    definitions = [
+        in_context("Invoice", "billing"),
+        Definition("charge_card", "Function", Path("src/billing/a.py"), 3),
+        in_context("Order", "core"),
+    ]
+    vectors = {"Invoice": EAST, "charge_card": EAST_ISH, "Order": NORTH}
+    points = {p.name: p for p in map_points(definitions, vectors, BILLING)}
+    assert points["Invoice"].role == "noun" and points["charge_card"].role == "verb"
+    assert points["Order"].scope == "core"
+    assert points["Invoice"].cluster != points["Order"].cluster
+    assert points["Invoice"].cluster == points["charge_card"].cluster
