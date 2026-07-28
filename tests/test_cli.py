@@ -67,6 +67,25 @@ def test_lint_of_a_subdirectory_honours_root_config_excludes(tmp_path: Path):
     assert "no findings" in result.stdout
 
 
+def test_lint_reports_a_forbidden_term_in_a_package_name(tmp_path: Path):
+    (tmp_path / "dddlint.yaml").write_text("forbidden: [utils]\n")
+    (tmp_path / "utils").mkdir()
+    (tmp_path / "utils" / "file_utils.py").write_text("class Customer:\n    pass\n")
+    result = runner.invoke(app, ["lint", str(tmp_path), "--config", str(tmp_path / "dddlint.yaml")])
+    assert result.exit_code == 1
+    assert "forbidden:module" in result.stdout
+    assert "2 findings" in result.stdout
+
+
+def test_lint_names_one_shared_package_once(tmp_path: Path):
+    (tmp_path / "dddlint.yaml").write_text("forbidden: [helpers]\n")
+    (tmp_path / "helpers").mkdir()
+    (tmp_path / "helpers" / "one.py").write_text("class Customer:\n    pass\n")
+    (tmp_path / "helpers" / "two.py").write_text("class Order:\n    pass\n")
+    result = runner.invoke(app, ["lint", str(tmp_path), "--config", str(tmp_path / "dddlint.yaml")])
+    assert "1 finding\n" in result.stdout
+
+
 def test_resolve_defaults_to_cwd_and_default_config(tmp_path: Path):
     root, config = _resolve(None, None)
     assert root == Path.cwd()

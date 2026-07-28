@@ -41,6 +41,9 @@ beside the config file. Both are matched relative to the config file's
 directory, so `dddlint lint src/billing` still respects patterns written
 relative to the project root.
 
+Directory and module names are linted alongside the definitions, as
+[`forbidden:module` and `alias:module`](rules.md#forbiddenmodule-and-aliasmodule).
+
 The config file itself is validated on every run (see the
 [config rules](rules.md#config-rules)).
 

@@ -10,7 +10,7 @@ from .check import Finding, check
 from .config import Config, load_config
 from .config_check import check_config
 from .discover import source_files
-from .extract import Definition, definitions, language_for
+from .extract import Definition, definitions, language_for, path_definitions
 
 if TYPE_CHECKING:
     from .insights import Insight
@@ -49,7 +49,9 @@ DEFAULT_CONFIG = Path("dddlint.yaml")
 
 RULE_STYLE: dict[str, str] = {
     "forbidden": "bold red",
+    "forbidden:module": "bold red",
     "alias": "bold yellow",
+    "alias:module": "bold yellow",
     "drift": "bold cyan",
     "config:forbidden-canonical-clash": "bold red",
     "config:alias-conflict": "bold yellow",
@@ -96,16 +98,21 @@ def _print_findings(findings: list[Finding]) -> None:
             )
 
 
-def _collect(root: Path, exclude: list[str], base: Path) -> list[Definition]:
+def _collect(root: Path, exclude: list[str], base: Path, paths: bool = False) -> list[Definition]:
     assert isinstance(root, Path), "root must be a Path to walk"
     assert isinstance(exclude, list), "exclude must be a list of patterns"
     assert base.is_dir(), "exclude patterns must be anchored to an existing directory"
     collected: list[Definition] = []
+    named: set[tuple[str, Path]] = set()
     for path in source_files(root, exclude, base):
         language = language_for(path)
         if language is None:
             continue
         collected.extend(definitions(path, language))
+        for named_path in path_definitions(path, root) if paths else []:
+            if (named_path.name, named_path.path) not in named:
+                named.add((named_path.name, named_path.path))
+                collected.append(named_path)
     return collected
 
 
@@ -156,7 +163,7 @@ def lint(
     root, config = _resolve(root, config)
     assert config.name, "config path must have a name"
     settings = _require_config(config)
-    collected = _collect(root, settings.exclude, config.parent)
+    collected = _collect(root, settings.exclude, config.parent, paths=True)
     findings = check_config(settings, config) + check(collected, settings)
     assert all(f.path for f in findings), "every finding must reference a file"
     if findings:
