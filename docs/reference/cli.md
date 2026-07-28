@@ -64,6 +64,11 @@ dddlint map [ROOT] [--config PATH]
 | `ROOT` | current directory | Directory to scan recursively |
 | `--config PATH` | `ROOT/dddlint.yaml` | Config file to load |
 
+`map` is the one command that needs an embedding backend, installed as an extra:
+`dddlint[embed-local]` for a model that runs offline, or `dddlint[embed]` for a
+hosted one such as `openai:text-embedding-3-small`. Without either, `map` exits
+`2` naming the extra to install; `lint`, `html`, and `lsp` never embed anything.
+
 Where `lint` compares names token by token, `map` embeds every definition name
 and compares meaning, which catches the pairs that share an idea but no
 spelling. Takes the same `ROOT` and `--config` arguments as `lint` and emits the
@@ -80,8 +85,8 @@ spelling. Takes the same `ROOT` and `--config` arguments as `lint` and emits the
 
 The first run downloads the model from
 [`embeddings.model`](config.md#embeddings) and writes vectors to
-`embeddings.cache`; later runs only embed names that are new. Always exits `0`,
-so it informs rather than gates. Prints `no definitions found` on an empty tree.
+`embeddings.cache`; later runs only embed names that are new. Exits `0` whatever
+it finds, so it informs rather than gates. Prints `no definitions found` on an empty tree.
 
 Every run also writes a scatter plot of the vocabulary to `dddmap.html` beside
 the config and opens it: names laid out by PCA so neighbours mean similar things, drawn as
@@ -91,6 +96,8 @@ region however far PCA scatters its names. Hovering a boundary brightens it and
 labels every name inside; otherwise one name per cluster is labelled, outliers
 always are, and zooming past 1.4 labels everything. Pan and zoom in the
 browser.
+
+![The dddlint vocabulary map of its own source: verbs as triangles, nouns as dots, one boundary per bounded context](../assets/dddmap.png){ loading=lazy }
 
 ```sh
 dddlint map src/
