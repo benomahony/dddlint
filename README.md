@@ -12,7 +12,15 @@ Works with any language tree-sitter recognises, without per-language queries. Sl
 
 ```sh
 uv add dddlint
+
+# dddlint map needs an embedding backend; this one runs locally and offline
+uv add 'dddlint[embed-local]'
+
+# or, for a hosted model such as openai:text-embedding-3-small
+uv add 'dddlint[embed]'
 ```
+
+`lint`, `html`, and `lsp` need none of these: only `map` embeds anything.
 
 ## Quick start
 

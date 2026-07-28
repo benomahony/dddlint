@@ -160,7 +160,6 @@ Vector helpers over plain `list[float]`, backed by numpy.
 | `centroid(vectors)` | list[float] | Unit-normalised mean vector |
 | `nearest(vector, centroids)` | tuple[str, float] | Best-matching label and its score |
 | `project(vectors)` | list[tuple[float, float]] | PCA projection to 2-D |
-| `hull(points)` | list[tuple[float, float]] | Convex hull of 2-D points |
 
 ## `dddlint.insights`
 

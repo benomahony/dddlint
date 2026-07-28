@@ -86,8 +86,10 @@ so it informs rather than gates. Prints `no definitions found` on an empty tree.
 
 With `--html`, the same run also writes a scatter plot of the vocabulary: names
 laid out by PCA so neighbours mean similar things, coloured by domain or
-context, drawn as triangles for verbs and dots for nouns, with clusters
-outlined and context outliers ringed. Pan and zoom in the browser.
+context, drawn as triangles for verbs and dots for nouns. Lines join the members
+of a cluster to its centre, and turn amber when the cluster spans more than one
+context. One name per cluster is labelled, outliers always are, and zooming past
+1.4 labels everything. Pan and zoom in the browser.
 
 ```sh
 dddlint map src/ --html map.html
