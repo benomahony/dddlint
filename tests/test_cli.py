@@ -10,7 +10,7 @@ from typer.testing import CliRunner
 
 from dddlint import __version__
 from dddlint.cli import _backend_missing, _print_backend_missing, _resolve, app
-from dddlint.config import Embeddings
+from dddlint.config import Embeddings, load_config
 
 pytestmark = pytest.mark.unit
 
@@ -77,6 +77,30 @@ def test_resolve_falls_back_to_cwd_config_when_missing(tmp_path: Path):
     root, config = _resolve(tmp_path, None)
     assert root == tmp_path
     assert config.name == "dddlint.yaml"
+
+
+def test_missing_config_says_so_without_a_traceback(tmp_path: Path):
+    (tmp_path / "a.py").write_text("class Customer:\n    pass\n")
+    result = runner.invoke(app, ["lint", str(tmp_path), "--config", str(tmp_path / "nope.yaml")])
+    assert result.exit_code == 2
+    assert "no config found" in result.stdout
+    assert "dddlint init" in result.stdout
+    assert "Traceback" not in result.stdout
+
+
+def test_init_writes_a_starter_config(tmp_path: Path):
+    result = runner.invoke(app, ["init", str(tmp_path)])
+    assert result.exit_code == 0
+    written = (tmp_path / "dddlint.yaml").read_text()
+    assert "forbidden:" in written
+    assert load_config(tmp_path / "dddlint.yaml").name_uniqueness is True
+
+
+def test_init_refuses_to_overwrite(tmp_path: Path):
+    (tmp_path / "dddlint.yaml").write_text("forbidden: [mine]\n")
+    result = runner.invoke(app, ["init", str(tmp_path)])
+    assert result.exit_code == 1
+    assert (tmp_path / "dddlint.yaml").read_text() == "forbidden: [mine]\n"
 
 
 def test_html_reuses_single_temp_file():

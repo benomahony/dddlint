@@ -69,6 +69,16 @@ def _resolve(root: Path | None, config: Path | None) -> tuple[Path, Path]:
     return root, config
 
 
+def _require_config(path: Path) -> Config:
+    assert path.name, "config path must have a filename"
+    assert isinstance(path, Path), "config must be a Path"
+    if not path.exists():
+        console.print(f"[bold red]no config found at {path}[/bold red]")
+        console.print("[dim]run 'dddlint init' to write a starter dddlint.yaml[/dim]")
+        raise typer.Exit(2)
+    return load_config(path)
+
+
 def _print_findings(findings: list[Finding]) -> None:
     assert all(f.line >= 0 for f in findings), "findings must have non-negative lines"
     assert all(f.rule for f in findings), "every finding must carry a rule tag"
@@ -99,6 +109,44 @@ def _collect(root: Path, exclude: list[str], base: Path) -> list[Definition]:
     return collected
 
 
+STARTER_CONFIG = """\
+# https://benomahony.github.io/dddlint/reference/config/
+enforce_canonical: true
+name_uniqueness: true
+
+# terms that must never appear in a definition name
+forbidden: []
+
+# paths to skip, gitignore syntax, relative to this file
+exclude: []
+
+# canonical terms and the aliases that must give way to them
+synonyms: []
+  # - canonical: customer
+  #   aliases: [client, user]
+
+# bounded contexts, each with its own vocabulary
+contexts: []
+  # - name: billing
+  #   include: ["**/billing/**"]
+"""
+
+
+@app.command()
+def init(
+    root: Annotated[Path | None, typer.Argument()] = None,
+) -> None:
+    """Write a starter dddlint.yaml."""
+    assert STARTER_CONFIG.endswith("\n"), "the starter config must end with a newline"
+    assert "name_uniqueness" in STARTER_CONFIG, "the starter config must show the defaults"
+    target = (root or Path.cwd()) / DEFAULT_CONFIG
+    if target.exists():
+        console.print(f"[bold red]{target} already exists[/bold red]")
+        raise typer.Exit(1)
+    target.write_text(STARTER_CONFIG)
+    console.print(f"[bold green]✔ wrote {target}[/bold green]")
+
+
 @app.command()
 def lint(
     root: Annotated[Path | None, typer.Argument()] = None,
@@ -107,7 +155,7 @@ def lint(
     """Lint a codebase for DDD ubiquitous language violations."""
     root, config = _resolve(root, config)
     assert config.name, "config path must have a name"
-    settings = load_config(config)
+    settings = _require_config(config)
     collected = _collect(root, settings.exclude, config.parent)
     findings = check_config(settings, config) + check(collected, settings)
     assert all(f.path for f in findings), "every finding must reference a file"
@@ -178,7 +226,7 @@ def vocabulary_map(
     """Report project-level vocabulary insights from name embeddings."""
     root, config = _resolve(root, config)
     assert config.name, "config path must have a name"
-    settings = load_config(config)
+    settings = _require_config(config)
     collected = _collect(root, settings.exclude, config.parent)
     assert all(d.name for d in collected), "every collected definition must have a name"
     if not collected:
@@ -227,7 +275,7 @@ def html(
 
     root, config = _resolve(root, config)
     assert config.name, "config path must have a name"
-    settings = load_config(config)
+    settings = _require_config(config)
     path = _write_temp_html(_generate_html(settings))
     assert path.endswith(".html"), "graph must be written to an .html file"
     webbrowser.open(f"file://{path}")
