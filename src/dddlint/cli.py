@@ -184,20 +184,24 @@ def vocabulary_map(
     console.rule(style="dim")
     _print_insights(insights)
     console.print(f"\n[bold cyan]◆ {len(insights)} insights[/bold cyan]")
+    import webbrowser
+
     from .insights import map_points
     from .view import _generate_scatter
 
     points = map_points(collected, vectors, settings)
-    path = _write_temp_html(_generate_scatter(points, insights), "dddlint-map.html")
-    console.print(f"[dim]map written to file://{path}[/dim]")
+    target = config.parent / ".dddlint" / "map.html"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(_generate_scatter(points, insights))
+    console.print(f"[dim]map written to file://{target.resolve()}[/dim]")
+    webbrowser.open(f"file://{target.resolve()}")
 
 
-def _write_temp_html(content: str, name: str = "dddlint-graph.html") -> str:
+def _write_temp_html(content: str) -> str:
     import tempfile
 
     assert content, "content must be non-empty"
-    assert name.endswith(".html"), "temp file must be an .html file"
-    path = Path(tempfile.gettempdir()) / name
+    path = Path(tempfile.gettempdir()) / "dddlint-graph.html"
     path.write_text(content)
     assert path.exists(), "graph file must be written"
     return str(path)

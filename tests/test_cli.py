@@ -1,5 +1,4 @@
 import json
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -118,7 +117,11 @@ def _repo_with_warm_cache(tmp_path: Path) -> Path:
 
 def test_map_reports_insights_from_the_cached_vectors(tmp_path: Path):
     root = _repo_with_warm_cache(tmp_path)
-    result = runner.invoke(app, ["map", str(root), "--config", str(root / "dddlint.yaml")])
+    result = runner.invoke(
+        app,
+        ["map", str(root), "--config", str(root / "dddlint.yaml")],
+        env={"BROWSER": "true"},
+    )
     assert result.exit_code == 0
     assert "4 names" in result.stdout
     assert "near-synonym" in result.stdout
@@ -131,12 +134,16 @@ def test_map_on_an_empty_tree_says_so(tmp_path: Path):
     assert "no definitions" in result.stdout
 
 
-def test_map_always_writes_the_scatter(tmp_path: Path):
+def test_map_writes_the_scatter_beside_the_config_and_opens_it(tmp_path: Path):
     root = _repo_with_warm_cache(tmp_path)
-    result = runner.invoke(app, ["map", str(root), "--config", str(root / "dddlint.yaml")])
+    result = runner.invoke(
+        app,
+        ["map", str(root), "--config", str(root / "dddlint.yaml")],
+        env={"BROWSER": "true"},
+    )
     assert result.exit_code == 0
-    target = Path(tempfile.gettempdir()) / "dddlint-map.html"
-    assert f"file://{target}" in result.stdout
+    target = root / ".dddlint" / "map.html"
+    assert "map.html" in result.stdout
     page = target.read_text()
     assert page.startswith("<!DOCTYPE html>")
     assert "__DATA__" not in page
@@ -145,7 +152,11 @@ def test_map_always_writes_the_scatter(tmp_path: Path):
 
 def test_map_of_a_subdirectory_finds_the_cache_beside_the_config(tmp_path: Path):
     root = _repo_with_warm_cache(tmp_path)
-    result = runner.invoke(app, ["map", str(root / "src"), "--config", str(root / "dddlint.yaml")])
+    result = runner.invoke(
+        app,
+        ["map", str(root / "src"), "--config", str(root / "dddlint.yaml")],
+        env={"BROWSER": "true"},
+    )
     assert result.exit_code == 0
     assert "4 names" in result.stdout
 

@@ -83,13 +83,14 @@ The first run downloads the model from
 `embeddings.cache`; later runs only embed names that are new. Always exits `0`,
 so it informs rather than gates. Prints `no definitions found` on an empty tree.
 
-Every run also writes a scatter plot of the vocabulary and prints its
-`file://` link: names
-laid out by PCA so neighbours mean similar things, coloured by domain or
-context, drawn as triangles for verbs and dots for nouns. Lines join the members
-of a cluster to its centre, and turn amber when the cluster spans more than one
-context. One name per cluster is labelled, outliers always are, and zooming past
-1.4 labels everything. Pan and zoom in the browser.
+Every run also writes a scatter plot of the vocabulary to `.dddlint/map.html`
+and opens it: names laid out by PCA so neighbours mean similar things, drawn as
+triangles for verbs and dots for nouns. One named boundary wraps each bounded
+context, stretched around every name that belongs to it, so a context is one
+region however far PCA scatters its names. Hovering a boundary brightens it and
+labels every name inside; otherwise one name per cluster is labelled, outliers
+always are, and zooming past 1.4 labels everything. Pan and zoom in the
+browser.
 
 ```sh
 dddlint map src/
