@@ -82,18 +82,6 @@ def test_scatter_colours_scopes_by_how_common_they_are():
     assert colors["extra"] == OTHER
 
 
-def test_scatter_links_only_clusters_with_company():
-    points = [
-        point("Invoice", "billing", 0, 0.0, 0.0),
-        point("Bill", "billing", 0, 1.0, 0.0),
-        point("Order", "core", 1, 5.0, 5.0),
-    ]
-    links = _build_scatter(points, [])["links"]
-    assert [link["cluster"] for link in links] == [0]
-    assert links[0]["mixed"] is False
-    assert len(links[0]["spokes"]) == 1
-
-
 def test_scatter_bounds_one_region_per_context():
     points = [
         point("Invoice", "billing", 0, 0.0, 0.0),
@@ -127,11 +115,6 @@ def test_scatter_gives_each_name_its_own_lopsided_lump():
 def test_scatter_sizes_blobs_from_the_typical_spacing():
     points = [point("Invoice", "billing", 0, 0.0, 0.0), point("Bill", "billing", 0, 2.0, 0.0)]
     assert _build_scatter(points, [])["radius"] == pytest.approx(1.5)
-
-
-def test_scatter_marks_a_cluster_spanning_two_scopes_as_mixed():
-    points = [point("Invoice", "billing", 0), point("Order", "core", 0, 1.0, 0.0)]
-    assert _build_scatter(points, [])["links"][0]["mixed"] is True
 
 
 def test_scatter_flags_names_reported_as_context_outliers():

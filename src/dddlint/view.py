@@ -440,33 +440,6 @@ def _regions(points: list[Point], reach: float, radius: float) -> list[dict]:
     ]
 
 
-def _links(points: list[Point]) -> list[dict]:
-    assert points, "need points to link"
-    assert all(point.cluster >= 0 for point in points), "cluster labels must be non-negative"
-    grouped: dict[int, list[Point]] = defaultdict(list)
-    for point in points:
-        grouped[point.cluster].append(point)
-    out: list[dict] = []
-    for label, members in sorted(grouped.items()):
-        if len(members) < 2:
-            continue
-        scopes = Counter(member.scope for member in members)
-        anchor = min(
-            members,
-            key=lambda m: sum((m.x - o.x) ** 2 + (m.y - o.y) ** 2 for o in members),
-        )
-        out.append(
-            {
-                "cluster": label,
-                "scope": scopes.most_common(1)[0][0],
-                "mixed": len(scopes) > 1,
-                "anchor": [anchor.x, anchor.y],
-                "spokes": [[m.x, m.y] for m in members if m is not anchor],
-            }
-        )
-    return out
-
-
 def _anchors(points: list[Point]) -> set[str]:
     assert points, "need points to pick anchors from"
     assert all(point.name for point in points), "every point must have a name"
@@ -490,7 +463,7 @@ def _build_scatter(points: list[Point], insights: list[Insight]) -> dict:
     assert all(point.name for point in points), "every point must have a name"
     assert all(insight.rule for insight in insights), "every insight must carry a rule"
     if not points:
-        return {"points": [], "links": [], "regions": [], "legend": [], "radius": 0.0}
+        return {"points": [], "regions": [], "legend": [], "radius": 0.0}
     colors = _scope_colors(points)
     flagged = {name for i in insights if i.rule == "context-outlier" for name in i.names}
     anchors = _anchors(points)
@@ -509,7 +482,6 @@ def _build_scatter(points: list[Point], insights: list[Insight]) -> dict:
             }
             for point in points
         ],
-        "links": _links(points),
         "regions": _regions(points, spacing * 3.0, spacing * 0.75),
         "radius": spacing * 0.75,
         "legend": [{"scope": scope, "color": color} for scope, color in colors.items()],
@@ -714,9 +686,9 @@ draw();
 
 def _generate_scatter(points: list[Point], insights: list[Insight]) -> str:
     scatter = _build_scatter(points, insights)
-    assert "points" in scatter and "links" in scatter, "scatter must have points and links"
+    assert "points" in scatter and "regions" in scatter, "scatter must have points and regions"
     colors = {entry["scope"]: entry["color"] for entry in scatter["legend"]}
-    for shape in scatter["links"] + scatter["regions"]:
+    for shape in scatter["regions"]:
         shape["color"] = colors[shape["scope"]]
     html = _SCATTER_TEMPLATE.replace("__DATA__", json.dumps(scatter)).replace(
         "__OUTLIER__", OUTLIER
