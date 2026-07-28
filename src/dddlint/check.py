@@ -124,6 +124,28 @@ def _case_only_across_kinds(names: set[str], kinds: set[str]) -> bool:
     return len(kinds) > 1 and len({n.lower() for n in names}) == 1
 
 
+def _sides(name: str, markers: frozenset[str]) -> tuple[tuple[str, ...], ...]:
+    assert name, "name must be non-empty to split"
+    assert markers, "need markers to split around"
+    out: list[list[str]] = [[]]
+    for token in tokenise(name):
+        if token in markers:
+            out.append([])
+        else:
+            out[-1].append(token)
+    return tuple(tuple(side) for side in out)
+
+
+def _directional(names: set[str], markers: frozenset[str]) -> bool:
+    """Order is the meaning: us_to_uk and uk_to_us are opposite directions, not drift."""
+    assert names, "names must be non-empty to compare"
+    assert isinstance(markers, frozenset), "markers must be a frozenset of tokens"
+    if not markers:
+        return False
+    sided = {_sides(name.lower(), markers) for name in names}
+    return len(sided) == len(names) and all(len(side) > 1 for side in sided)
+
+
 def _duplicates(definitions: list[Definition], config: Config) -> list[Finding]:
     assert all(d.name for d in definitions), "every definition must have a name"
     assert config.name_uniqueness, "only call this when uniqueness is enforced"
@@ -182,17 +204,21 @@ def check(definitions: list[Definition], config: Config) -> list[Finding]:
     if config.name_uniqueness:
         out.extend(_duplicates(definitions, config))
 
+    markers = frozenset(marker.lower() for marker in config.directional)
     for key, names in by_tokens.items():
-        if len(names) > 1 and not _case_only_across_kinds(names, kinds[key]):
-            definition = first[key]
-            spellings = ", ".join(sorted(names))
-            out.append(
-                Finding(
-                    definition.path,
-                    definition.line,
-                    definition.name,
-                    "drift",
-                    f"one concept spelled several ways: {spellings}",
-                )
+        if len(names) < 2 or _case_only_across_kinds(names, kinds[key]):
+            continue
+        if _directional(names, markers):
+            continue
+        definition = first[key]
+        spellings = ", ".join(sorted(names))
+        out.append(
+            Finding(
+                definition.path,
+                definition.line,
+                definition.name,
+                "drift",
+                f"one concept spelled several ways: {spellings}",
             )
+        )
     return out

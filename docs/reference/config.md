@@ -16,6 +16,7 @@ empty file is valid and produces no findings.
 | `name_uniqueness` | bool | `true` | Flag a name claimed by more than one definition in the same context. Set `false` to let a variable and a method share a name |
 | `forbidden` | list[str] | `[]` | Terms that must never appear in a definition name |
 | `exclude` | list[str] | `[]` | Paths to skip, see [exclude patterns](#exclude-patterns) |
+| `directional` | list[str] | `[to, from, before, after, src, dst]` | Tokens whose sides carry direction, exempting reordered names from [drift](rules.md#drift) |
 | `synonyms` | list[[SynonymGroup](#synonymgroup)] | `[]` | Canonical terms and their aliases |
 | `domains` | list[[Scope](#scope)] | `[]` | Path-scoped rules for high-level business domains |
 | `contexts` | list[[Scope](#scope)] | `[]` | Path-scoped rules applied after domains, win on conflict |

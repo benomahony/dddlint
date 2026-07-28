@@ -86,6 +86,38 @@ def test_drift_flags_case_only_difference_within_one_kind():
     assert any(f.rule == "drift" for f in check(defs, config))
 
 
+def test_drift_ignores_opposite_directions_around_a_marker():
+    defs = [
+        Definition("convert_us_to_uk", "Function", Path("a.py"), 1),
+        Definition("convert_uk_to_us", "Function", Path("b.py"), 1),
+    ]
+    assert not any(f.rule == "drift" for f in check(defs, Config()))
+
+
+def test_drift_flags_reordered_tokens_with_no_direction_between_them():
+    defs = [
+        Definition("confidence_negative", "Function", Path("a.py"), 1),
+        Definition("negative_confidence", "Function", Path("b.py"), 1),
+    ]
+    assert any(f.rule == "drift" for f in check(defs, Config()))
+
+
+def test_drift_flags_one_spelling_of_a_direction_repeated():
+    defs = [
+        Definition("copy_src_to_dst", "Function", Path("a.py"), 1),
+        Definition("copySrcToDst", "Function", Path("b.py"), 1),
+    ]
+    assert any(f.rule == "drift" for f in check(defs, Config()))
+
+
+def test_directional_markers_are_configurable():
+    defs = [
+        Definition("convert_us_to_uk", "Function", Path("a.py"), 1),
+        Definition("convert_uk_to_us", "Function", Path("b.py"), 1),
+    ]
+    assert any(f.rule == "drift" for f in check(defs, Config(directional=[])))
+
+
 def test_duplicate_flags_one_name_on_two_kinds():
     defs = [
         Definition("balance", "Method", Path("a.py"), 3),

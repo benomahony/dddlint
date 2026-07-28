@@ -119,12 +119,16 @@ rules = {f.rule for f in check(defs, Config())}
 assert "drift" in rules
 ```
 
-Language conventions are not drift, so two cases are exempt:
+Language conventions are not drift, so three cases are exempt:
 
 - **Dunder names.** `__init__` is a protocol slot, not a naming choice, so it
   never drifts against an `init` function.
 - **Case-only collisions across kinds.** An `Entity` class beside an `entity()`
   method is PEP 8, not duplication.
+- **Opposite directions.** When each name arranges its tokens differently around
+  a [`directional`](config.md#top-level-keys) marker, order is the meaning:
+  `convert_us_to_uk` and `convert_uk_to_us` are two conversions, not one
+  concept spelled twice.
 
 Visibility-only pairs still report: `_validate` against `validate` in another
 module is genuine duplication.

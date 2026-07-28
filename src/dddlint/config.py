@@ -31,6 +31,7 @@ class Config(BaseModel):
     name_uniqueness: bool = True
     forbidden: list[str] = []
     exclude: list[str] = []
+    directional: list[str] = ["to", "from", "before", "after", "src", "dst"]
     synonyms: list[SynonymGroup] = []
     domains: list[Context] = []
     contexts: list[Context] = []
