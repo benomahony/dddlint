@@ -30,6 +30,9 @@ jobs:
       - name: Type check with basedpyright
         run: uv run basedpyright
 
+      - name: Run integration tests
+        run: uv run pytest -m integration --no-cov
+
       - name: Run unit tests (parallel)
         run: uv run pytest -m unit -n auto --cov=dddlint --cov-report=term-missing --cov-report=json
 
