@@ -135,6 +135,12 @@ def _backend_missing(model: str, error: ImportError) -> str:
     )
 
 
+def _print_backend_missing(target: Console, model: str, error: ImportError) -> None:
+    assert model, "the message must name the configured model"
+    assert error is not None, "the message must carry the import failure"
+    target.print(_backend_missing(model, error), style="bold red", markup=False)
+
+
 def _vectors(names: list[str], settings: Config, base: Path) -> dict[str, list[float]]:
     assert names, "there must be names to embed"
     assert base.is_dir(), "the cache must be anchored to an existing directory"
@@ -147,7 +153,7 @@ def _vectors(names: list[str], settings: Config, base: Path) -> dict[str, list[f
 
         return asyncio.run(embed_names(names, embeddings))
     except ImportError as error:
-        console.print(f"[bold red]{_backend_missing(settings.embeddings.model, error)}[/bold red]")
+        _print_backend_missing(console, settings.embeddings.model, error)
         raise typer.Exit(2) from error
 
 

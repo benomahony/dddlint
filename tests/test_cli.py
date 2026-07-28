@@ -1,11 +1,13 @@
 import json
+from io import StringIO
 from pathlib import Path
 
 import pytest
+from rich.console import Console
 from typer.testing import CliRunner
 
 from dddlint import __version__
-from dddlint.cli import _backend_missing, _resolve, app
+from dddlint.cli import _backend_missing, _print_backend_missing, _resolve, app
 from dddlint.config import Embeddings
 
 pytestmark = pytest.mark.unit
@@ -167,3 +169,13 @@ def test_missing_backend_message_names_the_extra_to_install():
     assert "no torch" in local
     remote = _backend_missing("openai:text-embedding-3-small", ImportError("no httpx"))
     assert "dddlint[embed]" in remote
+
+
+def test_missing_backend_message_keeps_the_extra_through_rich():
+    output = StringIO()
+    _print_backend_missing(
+        Console(file=output, width=200),
+        "sentence-transformers:all-MiniLM-L6-v2",
+        ImportError("no torch"),
+    )
+    assert "dddlint[embed-local]" in output.getvalue()
