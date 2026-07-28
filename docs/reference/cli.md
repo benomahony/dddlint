@@ -50,6 +50,23 @@ The config file itself is validated on every run (see the
 |---|---|
 | `0` | No findings |
 | `1` | One or more findings (printed to stdout) |
+| `2` | No config found at the resolved path |
+
+## `init`
+
+Write a starter `dddlint.yaml`.
+
+```sh
+dddlint init [ROOT]
+```
+
+| Argument | Default | Description |
+|---|---|---|
+| `ROOT` | current directory | Directory to write `dddlint.yaml` into |
+
+The file lists the defaults with every list left empty, so it produces no
+findings until you fill it in. Refuses to overwrite an existing config, exiting
+`1` and leaving your file alone.
 
 ## `map`
 

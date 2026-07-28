@@ -65,6 +65,14 @@ the same context: two concepts wearing one word. Every sharer is reported, each
 message naming the others. Set `name_uniqueness: false` to allow it, for
 instance where a variable and a method deliberately share a name.
 
+The cost of a shared name is paid at every search. `rg balance` should answer
+"where is balance defined, and who uses it" in one hop; when two definitions
+answer to it, every hit has to be read to work out which one it belongs to.
+That tax falls hardest on coding agents, which navigate almost entirely by
+grep and have no editor index to fall back on: an ambiguous name turns one
+lookup into a disambiguation pass, and a wrong guess edits the wrong symbol.
+A unique name keeps the search, the rename, and the review honest.
+
 Matching is on the exact name, and only within one context, since two bounded
 contexts owning the same word is what a bounded context is for. Dunder names are
 exempt. Collisions are scoped by [`domains` and `contexts`](config.md#scope), so
