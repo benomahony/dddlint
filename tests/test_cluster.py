@@ -3,7 +3,7 @@ import math
 
 import pytest
 
-from dddlint.cluster import centroid, clusters, hull, nearest, project, similarities
+from dddlint.cluster import centroid, clusters, nearest, project, similarities
 
 pytestmark = pytest.mark.unit
 
@@ -64,19 +64,3 @@ def test_nearest_picks_the_closest_centroid():
     label, score = nearest(RIGHT, {"east": RIGHT_ISH, "north": UP})
     assert label == "east"
     assert score == pytest.approx(0.96)
-
-
-def test_hull_of_a_square_keeps_only_its_corners():
-    square = [(0.0, 0.0), (2.0, 0.0), (2.0, 2.0), (0.0, 2.0), (1.0, 1.0)]
-    assert sorted(hull(square)) == [(0.0, 0.0), (0.0, 2.0), (2.0, 0.0), (2.0, 2.0)]
-
-
-def test_hull_of_one_or_two_points_is_those_points():
-    assert hull([(1.0, 1.0)]) == [(1.0, 1.0)]
-    assert hull([(1.0, 1.0), (0.0, 0.0), (1.0, 1.0)]) == [(0.0, 0.0), (1.0, 1.0)]
-
-
-def test_hull_walks_a_closed_ring():
-    ring = hull([(0.0, 0.0), (4.0, 0.0), (4.0, 3.0), (0.0, 3.0)])
-    assert len(ring) == 4
-    assert ring[0] != ring[-1]

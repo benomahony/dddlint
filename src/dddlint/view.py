@@ -1,7 +1,6 @@
 import json
 from collections import Counter, defaultdict
 
-from .cluster import hull
 from .config import Config
 from .insights import Insight, Point
 
@@ -382,8 +381,8 @@ def _scope_colors(points: list[Point]) -> dict[str, str]:
     }
 
 
-def _rings(points: list[Point]) -> list[dict]:
-    assert points, "need points to outline"
+def _links(points: list[Point]) -> list[dict]:
+    assert points, "need points to link"
     assert all(point.cluster >= 0 for point in points), "cluster labels must be non-negative"
     grouped: dict[int, list[Point]] = defaultdict(list)
     for point in points:
@@ -393,12 +392,17 @@ def _rings(points: list[Point]) -> list[dict]:
         if len(members) < 2:
             continue
         scopes = Counter(member.scope for member in members)
+        anchor = min(
+            members,
+            key=lambda m: sum((m.x - o.x) ** 2 + (m.y - o.y) ** 2 for o in members),
+        )
         out.append(
             {
                 "cluster": label,
                 "scope": scopes.most_common(1)[0][0],
                 "mixed": len(scopes) > 1,
-                "ring": [list(vertex) for vertex in hull([(m.x, m.y) for m in members])],
+                "anchor": [anchor.x, anchor.y],
+                "spokes": [[m.x, m.y] for m in members if m is not anchor],
             }
         )
     return out
@@ -414,9 +418,12 @@ def _anchors(points: list[Point]) -> set[str]:
     for members in grouped.values():
         if len(members) < 2:
             continue
-        mid_x = sum(member.x for member in members) / len(members)
-        mid_y = sum(member.y for member in members) / len(members)
-        out.add(min(members, key=lambda m: (m.x - mid_x) ** 2 + (m.y - mid_y) ** 2).name)
+        out.add(
+            min(
+                members,
+                key=lambda m: sum((m.x - o.x) ** 2 + (m.y - o.y) ** 2 for o in members),
+            ).name
+        )
     return out
 
 
@@ -424,7 +431,7 @@ def _build_scatter(points: list[Point], insights: list[Insight]) -> dict:
     assert all(point.name for point in points), "every point must have a name"
     assert all(insight.rule for insight in insights), "every insight must carry a rule"
     if not points:
-        return {"points": [], "rings": [], "legend": []}
+        return {"points": [], "links": [], "legend": []}
     colors = _scope_colors(points)
     flagged = {name for i in insights if i.rule == "context-outlier" for name in i.names}
     anchors = _anchors(points)
@@ -442,7 +449,7 @@ def _build_scatter(points: list[Point], insights: list[Insight]) -> dict:
             }
             for point in points
         ],
-        "rings": _rings(points),
+        "links": _links(points),
         "legend": [{"scope": scope, "color": color} for scope, color in colors.items()],
     }
 
@@ -475,8 +482,8 @@ _SCATTER_TEMPLATE = """\
 <div id="hint">scroll to zoom · drag to pan · zoom in for every name</div>
 <div id="legend"></div>
 <div id="caption">Names placed by embedding similarity, flattened with PCA. Distance is
-approximate: neighbours share meaning. Rings outline clusters; a ring in amber holds more
-than one context.</div>
+approximate: lines join names that cluster together, and an amber line means the cluster
+spans more than one context.</div>
 <script>
 const DATA = __DATA__;
 const OUTLIER = '__OUTLIER__';
@@ -543,22 +550,17 @@ function alpha(hex, a) {
 
 function draw() {
   ctx.clearRect(0, 0, W, H);
-  for (const ring of DATA.rings) {
-    const path = ring.ring.map(screen);
-    const tint = ring.mixed ? OUTLIER : ring.color;
-    ctx.beginPath();
-    path.forEach((at, i) => i ? ctx.lineTo(at.x, at.y) : ctx.moveTo(at.x, at.y));
-    ctx.closePath();
-    ctx.fillStyle = alpha(tint, 0.06);
-    ctx.fill();
+  for (const link of DATA.links) {
+    const at = screen(link.anchor);
+    ctx.strokeStyle = alpha(link.mixed ? OUTLIER : link.color, 0.35);
     ctx.lineWidth = 1;
-    ctx.strokeStyle = alpha(tint, 0.4);
-    ctx.stroke();
-    const top = path.reduce((a, b) => a.y < b.y ? a : b);
-    ctx.font = '600 10px system-ui';
-    ctx.fillStyle = '#8a8a80';
-    ctx.textAlign = 'center';
-    ctx.fillText(ring.mixed ? ring.scope + ' + others' : ring.scope, top.x, top.y - 10);
+    for (const spoke of link.spokes) {
+      const to = screen(spoke);
+      ctx.beginPath();
+      ctx.moveTo(at.x, at.y);
+      ctx.lineTo(to.x, to.y);
+      ctx.stroke();
+    }
   }
   for (const p of DATA.points) marker(p, screen([p.x, p.y]));
 }
@@ -594,10 +596,10 @@ draw();
 
 def _generate_scatter(points: list[Point], insights: list[Insight]) -> str:
     scatter = _build_scatter(points, insights)
-    assert "points" in scatter and "rings" in scatter, "scatter must have points and rings"
+    assert "points" in scatter and "links" in scatter, "scatter must have points and links"
     colors = {entry["scope"]: entry["color"] for entry in scatter["legend"]}
-    for ring in scatter["rings"]:
-        ring["color"] = colors[ring["scope"]]
+    for link in scatter["links"]:
+        link["color"] = colors[link["scope"]]
     html = _SCATTER_TEMPLATE.replace("__DATA__", json.dumps(scatter)).replace(
         "__OUTLIER__", OUTLIER
     )

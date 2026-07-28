@@ -82,20 +82,21 @@ def test_scatter_colours_scopes_by_how_common_they_are():
     assert colors["extra"] == OTHER
 
 
-def test_scatter_rings_only_clusters_with_company():
+def test_scatter_links_only_clusters_with_company():
     points = [
         point("Invoice", "billing", 0, 0.0, 0.0),
         point("Bill", "billing", 0, 1.0, 0.0),
         point("Order", "core", 1, 5.0, 5.0),
     ]
-    rings = _build_scatter(points, [])["rings"]
-    assert [ring["cluster"] for ring in rings] == [0]
-    assert rings[0]["mixed"] is False
+    links = _build_scatter(points, [])["links"]
+    assert [link["cluster"] for link in links] == [0]
+    assert links[0]["mixed"] is False
+    assert len(links[0]["spokes"]) == 1
 
 
 def test_scatter_marks_a_cluster_spanning_two_scopes_as_mixed():
     points = [point("Invoice", "billing", 0), point("Order", "core", 0, 1.0, 0.0)]
-    assert _build_scatter(points, [])["rings"][0]["mixed"] is True
+    assert _build_scatter(points, [])["links"][0]["mixed"] is True
 
 
 def test_scatter_flags_names_reported_as_context_outliers():
