@@ -392,7 +392,7 @@ def _gap(a: Point, b: Point) -> float:
     return ((a.x - b.x) ** 2 + (a.y - b.y) ** 2) ** 0.5
 
 
-def _spacing(points: list[Point]) -> float:
+def _median_gap(points: list[Point]) -> float:
     assert points, "need points to measure spacing"
     assert all(point.name for point in points), "every point must have a name"
     if len(points) < 2:
@@ -471,7 +471,7 @@ def _build_scatter(points: list[Point], insights: list[Insight]) -> dict:
     colors = _scope_colors(points)
     flagged = {name for i in insights if i.rule == "context-outlier" for name in i.names}
     anchors = _anchors(points)
-    spacing = _spacing(points)
+    spacing = _median_gap(points)
     return {
         "points": [
             {
