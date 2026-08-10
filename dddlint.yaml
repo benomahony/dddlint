@@ -3,6 +3,7 @@ enforce_canonical: true
 
 exclude:
   - examples/**
+  - tests/**
 
 contexts:
   - name: core
