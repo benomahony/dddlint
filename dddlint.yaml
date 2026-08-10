@@ -4,47 +4,75 @@ enforce_canonical: true
 exclude:
   - examples/**
 
-forbidden:
-  - util
-  - helper
-  - manager
-  - wrapper
-  - handler
-  - impl
-  - misc
-  - common
-  - stuff
-
-synonyms:
-  - canonical: finding
-    aliases: [violation, issue, error, problem]
-  - canonical: definition
-    aliases: [symbol, declaration, identifier]
-  - canonical: config
-    aliases: [settings, configuration, options, opts]
-  - canonical: path
-    aliases: [filepath, fpath, dir, folder]
-  - canonical: diagnostic
-    aliases: [warning, marker, squiggle]
-  - canonical: token
-    aliases: [word, piece, fragment]
-  - canonical: graph
-    aliases: [chart, network]
-  - canonical: language
-    aliases: [lang, grammar, parser]
-
 contexts:
+  - name: core
+    include: ["src/dddlint/*.py"]
+    forbidden: [util, helper, manager, wrapper, handler, impl, misc, common, stuff]
+
   - name: extraction
-    include: ["**/extract.py"]
+    include: ["**/extract.py", "**/discover.py"]
     synonyms:
       - canonical: definition
         aliases: [node, entity, decl]
       - canonical: kind
         aliases: [type, sort]
+      - canonical: path
+        aliases: [filepath, fpath, dir, folder]
+      - canonical: language
+        aliases: [lang, grammar, parser]
+
   - name: checking
     include: ["**/check.py", "**/config_check.py"]
     synonyms:
       - canonical: finding
-        aliases: [result, report, hit]
+        aliases: [violation, issue, error, problem, result, report, hit]
+      - canonical: token
+        aliases: [word, piece, fragment]
       - canonical: rule
         aliases: [ruletype]
+
+  - name: config
+    include: ["**/config.py"]
+    synonyms:
+      - canonical: config
+        aliases: [settings, configuration, options, opts]
+
+  - name: clustering
+    include: ["**/cluster.py", "**/embed.py"]
+    synonyms:
+      - canonical: vector
+        aliases: [embedding, representation]
+      - canonical: cluster
+        aliases: [group, community]
+
+  - name: insights
+    include: ["**/insights.py"]
+    synonyms:
+      - canonical: insight
+        aliases: [observation, finding]
+
+  - name: server
+    include: ["**/server.py", "**/mcp_server.py"]
+    synonyms:
+      - canonical: diagnostic
+        aliases: [warning, marker, squiggle]
+      - canonical: server
+        aliases: [daemon, service]
+
+  - name: view
+    include: ["**/view.py"]
+    synonyms:
+      - canonical: graph
+        aliases: [chart, network]
+
+  - name: cli
+    include: ["**/cli.py"]
+    synonyms:
+      - canonical: command
+        aliases: [subcommand]
+
+  - name: tests
+    include: ["tests/**"]
+    synonyms:
+      - canonical: test
+        aliases: [spec, check]
