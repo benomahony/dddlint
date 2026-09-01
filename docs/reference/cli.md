@@ -125,6 +125,54 @@ browser.
 dddlint map src/
 ```
 
+## `discover`
+
+Suggest domains by clustering name embeddings.
+
+```sh
+dddlint discover [ROOT] [--config PATH] [--all] [--limit N]
+```
+
+| Argument / option | Default | Description |
+|---|---|---|
+| `ROOT` | current directory | Directory to scan recursively |
+| `--config PATH` | `ROOT/dddlint.yaml` | Config file to load |
+| `--all` / `--unassigned` | `--unassigned` | Cluster every name, or only names outside every declared domain |
+| `--limit N` | `1` | How many suggestions to show; `0` for all |
+
+Where `map` reports insight about the vocabulary you have, `discover` proposes
+the boundaries you don't yet: it groups names by embedding similarity and names
+each cohesive cluster after the directory its members share, emitting a
+ready-to-paste `domains:` block. It needs the same embedding backend as `map`
+and reuses the same cache.
+
+By default it clusters only the names no `domains` or `contexts` glob claims, so
+each suggestion is the next domain hiding in code you have not carved out yet,
+strongest first. `--limit` raises how many it shows. `--all` clusters every
+name instead, which additionally flags a cluster whose members straddle two
+declared domains — a sign your current boundaries may overlap.
+
+```text
+42 names, clustering unassigned names
+──────────────────────────────────────────────────────────────────
+  0.91  billing           **/billing/**  7 names
+        Invoice, Charge, Ledger, Statement, Dunning, Refund (+1 more)
+
+◆ 1 suggestion
+paste into dddlint.yaml:
+domains:
+  - name: billing
+    include: ["**/billing/**"]
+```
+
+A cluster smaller than three names is never a domain, so it is left out. Exits
+`0` whatever it finds; prints `no definitions found` on an empty tree and
+`no cohesive domain candidate found` when nothing clusters.
+
+```sh
+dddlint discover --all --limit 0 src/
+```
+
 ## `html`
 
 Open an interactive language graph in the browser.

@@ -13,7 +13,7 @@ from .discover import source_files
 from .extract import Definition, definitions, language_for, path_definitions
 
 if TYPE_CHECKING:
-    from .insights import Insight
+    from .insights import Insight, Suggestion
 
 app = typer.Typer(
     add_completion=False,
@@ -258,6 +258,79 @@ def vocabulary_map(
     target.write_text(_generate_scatter(points, insights))
     console.print(f"[dim]map written to file://{target.resolve()}[/dim]", soft_wrap=True)
     webbrowser.open(f"file://{target.resolve()}")
+
+
+def _scope_note(scopes: tuple[str, ...]) -> str:
+    assert scopes, "a suggestion must record the scopes its names come from"
+    declared = [scope for scope in scopes if scope != "global"]
+    if len(declared) > 1:
+        return f"spans {', '.join(declared)}; existing boundaries may overlap"
+    if declared:
+        return f"extends {declared[0]} into unassigned code"
+    return "new domain in unassigned code"
+
+
+def _suggestion_yaml(suggestions: list["Suggestion"]) -> str:
+    assert suggestions, "there must be suggestions to render as YAML"
+    lines = ["domains:"]
+    for suggestion in suggestions:
+        lines.append(f"  - name: {suggestion.name}")
+        lines.append(f'    include: ["{suggestion.include}"]')
+    return "\n".join(lines)
+
+
+def _print_suggestions(suggestions: list["Suggestion"], whole: bool) -> None:
+    assert all(s.members for s in suggestions), "every suggestion must name its members"
+    for suggestion in suggestions:
+        sample = ", ".join(suggestion.members[:6])
+        more = f" (+{len(suggestion.members) - 6} more)" if len(suggestion.members) > 6 else ""
+        name = f"[bold green]{suggestion.name:<16}[/bold green]"
+        console.print(
+            f"  [dim]{suggestion.cohesion:.2f}[/dim]  {name}"
+            f"  [bold]{suggestion.include}[/bold]  [dim]{len(suggestion.members)} names[/dim]"
+        )
+        console.print(f"        [dim]{sample}{more}[/dim]", soft_wrap=True)
+        if whole:
+            console.print(f"        [dim yellow]{_scope_note(suggestion.scopes)}[/dim yellow]")
+
+
+@app.command()
+def discover(
+    root: Annotated[Path | None, typer.Argument()] = None,
+    config: Annotated[Path | None, typer.Option()] = None,
+    whole: Annotated[
+        bool,
+        typer.Option("--all/--unassigned", help="cluster every name, not just unassigned ones"),
+    ] = False,
+    limit: Annotated[int, typer.Option(help="how many suggestions to show; 0 for all")] = 1,
+) -> None:
+    """Suggest domains by clustering name embeddings."""
+    root, config = _resolve(root, config)
+    assert config.name, "config path must have a name"
+    settings = _require_config(config)
+    collected = _collect(root, settings.exclude, config.parent)
+    assert all(d.name for d in collected), "every collected definition must have a name"
+    if not collected:
+        console.print("[bold yellow]no definitions found[/bold yellow]")
+        raise typer.Exit(0)
+    vectors = _vectors([d.name for d in collected], settings, config.parent)
+    from .insights import discover_domains
+
+    suggestions = discover_domains(collected, vectors, settings, whole=whole, limit=limit)
+    scope = "all names" if whole else "unassigned names"
+    console.print(f"\n[bold white]{len(vectors)} names, clustering {scope}[/bold white]")
+    console.rule(style="dim")
+    if not suggestions:
+        console.print("[dim]no cohesive domain candidate found[/dim]")
+        raise typer.Exit(0)
+    _print_suggestions(suggestions, whole)
+    console.print(
+        f"\n[bold cyan]◆ {len(suggestions)} suggestion"
+        + ("s" if len(suggestions) != 1 else "")
+        + "[/bold cyan]"
+    )
+    console.print("[dim]paste into dddlint.yaml:[/dim]")
+    console.print(_suggestion_yaml(suggestions), markup=False, soft_wrap=True)
 
 
 def _write_temp_html(content: str) -> str:

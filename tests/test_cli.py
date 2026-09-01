@@ -215,6 +215,69 @@ def test_map_of_a_subdirectory_finds_the_cache_beside_the_config(tmp_path: Path)
     assert "4 names" in result.stdout
 
 
+DISCOVER_NAMES = {
+    "Invoice": [1.0, 0.0],
+    "Charge": [0.999, 0.045],
+    "Ledger": [0.998, 0.06],
+    "Parcel": [0.0, 1.0],
+    "Dispatch": [0.2, 0.98],
+    "Courier": [0.28, 0.96],
+}
+
+
+def _repo_for_discover(tmp_path: Path) -> Path:
+    (tmp_path / "dddlint.yaml").write_text("embeddings:\n  threshold: 0.9\n")
+    (tmp_path / "src/billing").mkdir(parents=True)
+    (tmp_path / "src/shipping").mkdir(parents=True)
+    (tmp_path / "src/billing/a.py").write_text(
+        "class Invoice: ...\nclass Charge: ...\nclass Ledger: ...\n"
+    )
+    (tmp_path / "src/shipping/b.py").write_text(
+        "class Parcel: ...\nclass Dispatch: ...\nclass Courier: ...\n"
+    )
+    cache = tmp_path / ".dddlint/embeddings.json"
+    cache.parent.mkdir()
+    key = f"{Embeddings().model}/native"
+    cache.write_text(json.dumps({"key": key, "vectors": DISCOVER_NAMES}))
+    return tmp_path
+
+
+def test_discover_suggests_the_strongest_domain_and_prints_yaml(tmp_path: Path):
+    root = _repo_for_discover(tmp_path)
+    result = runner.invoke(app, ["discover", str(root), "--config", str(root / "dddlint.yaml")])
+    assert result.exit_code == 0
+    assert "billing" in result.stdout
+    assert "**/billing/**" in result.stdout
+    assert "domains:" in result.stdout
+
+
+def test_discover_all_with_limit_lists_every_cluster(tmp_path: Path):
+    root = _repo_for_discover(tmp_path)
+    result = runner.invoke(
+        app,
+        ["discover", str(root), "--all", "--limit", "0", "--config", str(root / "dddlint.yaml")],
+    )
+    assert result.exit_code == 0
+    assert "billing" in result.stdout and "shipping" in result.stdout
+
+
+def test_scope_note_flags_a_cluster_that_straddles_two_domains():
+    from dddlint.cli import _scope_note
+
+    assert "overlap" in _scope_note(("billing", "shipping"))
+    assert _scope_note(("billing", "global")) == "extends billing into unassigned code"
+    assert _scope_note(("global",)) == "new domain in unassigned code"
+
+
+def test_discover_on_an_empty_tree_says_so(tmp_path: Path):
+    (tmp_path / "dddlint.yaml").write_text("")
+    result = runner.invoke(
+        app, ["discover", str(tmp_path), "--config", str(tmp_path / "dddlint.yaml")]
+    )
+    assert result.exit_code == 0
+    assert "no definitions" in result.stdout
+
+
 def test_missing_backend_message_names_the_extra_to_install():
     local = _backend_missing("sentence-transformers:all-MiniLM-L6-v2", ImportError("no torch"))
     assert "dddlint[embed-local]" in local

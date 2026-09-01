@@ -1,7 +1,8 @@
-from collections import defaultdict
+from collections import Counter, defaultdict
 from collections.abc import Mapping
 from dataclasses import dataclass
 from itertools import takewhile
+from math import sqrt
 from pathlib import Path
 
 from .check import owning_scope, scope_of, tokenise
@@ -170,3 +171,97 @@ def map_points(
         )
         for index, ((x, y), name) in enumerate(zip(project(matrix), names, strict=True))
     ]
+
+
+# a domain is more than a coincidence: below this a cluster is a pair, not a boundary
+MIN_DOMAIN = 3
+# directory names too generic to name a domain after; fall back to the vocabulary instead
+GENERIC_DIRS = frozenset({"src", "lib", "app", "source", "internal", "pkg", "main", ""})
+
+
+@dataclass(frozen=True, slots=True)
+class Suggestion:
+    name: str
+    include: str
+    members: tuple[str, ...]
+    cohesion: float
+    scopes: tuple[str, ...]
+
+    @property
+    def rank(self) -> float:
+        """Cohesion weighted by size: a tight pair should not outrank a broad, coherent group."""
+        assert 0.0 <= self.cohesion <= 1.0, "cohesion must be a cosine in [0, 1]"
+        return self.cohesion * sqrt(len(self.members))
+
+
+def _cohesion(vectors: list[Vector]) -> float:
+    assert len(vectors) > 1, "cohesion needs at least two vectors to average over pairs"
+    matrix = similarities(vectors)
+    pairs = [matrix[a][b] for a in range(len(vectors)) for b in range(a + 1, len(vectors))]
+    assert pairs, "a cluster of two or more names has at least one pair"
+    return sum(pairs) / len(pairs)
+
+
+def _glob_and_name(paths: list[Path], vocabulary: str) -> tuple[str, str]:
+    """Where the cluster lives (a path glob) and what to call it (its directory, else its words)."""
+    assert paths, "a suggestion must have member paths to place"
+    assert vocabulary, "need a fallback name drawn from the vocabulary"
+    modal, _ = Counter(path.parent.name for path in paths).most_common(1)[0]
+    if modal in GENERIC_DIRS:
+        return f"**/{vocabulary}/**", vocabulary
+    return f"**/{modal}/**", modal
+
+
+def _domain_name(names: list[str], vectors: Mapping[str, Vector]) -> str:
+    """The cluster's centre of gravity: the first token of the name nearest its centroid."""
+    assert names, "a cluster names at least one definition"
+    hub = centroid([vectors[name] for name in names])
+    nearest_name = max(names, key=lambda name: similarities([vectors[name], hub])[0][1])
+    return tokenise(nearest_name)[0]
+
+
+def discover_domains(
+    definitions: list[Definition],
+    vectors: Mapping[str, Vector],
+    config: Config,
+    *,
+    whole: bool = False,
+    limit: int = 1,
+) -> list[Suggestion]:
+    """Cluster names into candidate domains, ranked strongest first.
+
+    By default only names outside every declared domain are considered, so the result
+    is the next domain hiding in code you have not carved out yet. With ``whole`` set,
+    every name is clustered, which also surfaces clusters that straddle existing
+    boundaries. ``limit`` caps how many suggestions are returned; ``limit <= 0`` returns all.
+    """
+    assert all(d.name for d in definitions), "every definition must have a name"
+    assert all(vectors.values()), "every vector must have components"
+    known = _first_seen(definitions, vectors)
+    chosen = {
+        name: definition
+        for name, definition in known.items()
+        if whole or owning_scope(config, definition.path) is None
+    }
+    if len(chosen) < MIN_DOMAIN:
+        return []
+    names = sorted(chosen)
+    out: list[Suggestion] = []
+    for group in clusters([vectors[name] for name in names], threshold_for(config)):
+        members = [names[index] for index in group]
+        if len(members) < MIN_DOMAIN:
+            continue
+        vocabulary = _domain_name(members, vectors)
+        include, name = _glob_and_name([chosen[member].path for member in members], vocabulary)
+        scopes = Counter(scope_of(config, chosen[member].path) for member in members)
+        out.append(
+            Suggestion(
+                name,
+                include,
+                tuple(members),
+                _cohesion([vectors[member] for member in members]),
+                tuple(scope for scope, _ in scopes.most_common()),
+            )
+        )
+    ranked = sorted(out, key=lambda suggestion: -suggestion.rank)
+    return ranked if limit <= 0 else ranked[:limit]

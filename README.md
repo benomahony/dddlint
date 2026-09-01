@@ -20,7 +20,7 @@ uv add 'dddlint[embed-local]'
 uv add 'dddlint[embed]'
 ```
 
-`lint`, `html`, and `lsp` need none of these: only `map` embeds anything.
+`lint`, `html`, and `lsp` need none of these: only `map` and `discover` embed anything.
 
 ## Quick start
 
@@ -33,6 +33,9 @@ dddlint lint src/
 
 # report vocabulary insights from name embeddings, plus a scatter plot to open
 dddlint map
+
+# suggest domains by clustering name embeddings
+dddlint discover
 
 # open an interactive language graph in the browser
 dddlint html

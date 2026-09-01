@@ -7,7 +7,9 @@ from dddlint.extract import Definition
 from dddlint.insights import (
     UNASSIGNED,
     Insight,
+    Suggestion,
     context_outliers,
+    discover_domains,
     map_points,
     near_synonyms,
     role_of,
@@ -145,6 +147,88 @@ def test_near_synonyms_ignores_one_word_family():
     vectors = {"Embeddings": EAST, "_embedder": EAST_ISH, "embed_names": [0.97, 0.24]}
     config = Config(embeddings=Embeddings(threshold=0.9))
     assert near_synonyms(definitions, vectors, config) == []
+
+
+BILLING_VECTORS = {"Invoice": [1.0, 0.0], "Charge": [0.999, 0.045], "Ledger": [0.998, 0.06]}
+SHIPPING_VECTORS = {"Parcel": [0.0, 1.0], "Dispatch": [0.2, 0.98], "Courier": [0.28, 0.96]}
+DISCOVER = Config(embeddings=Embeddings(threshold=0.9))
+
+
+def in_folder(name: str, folder: str) -> Definition:
+    return Definition(name, "Class", Path(f"src/{folder}/a.py"), 1)
+
+
+def _two_clusters() -> tuple[list[Definition], dict[str, list[float]]]:
+    definitions = [in_folder(name, "billing") for name in BILLING_VECTORS]
+    definitions += [in_folder(name, "shipping") for name in SHIPPING_VECTORS]
+    return definitions, BILLING_VECTORS | SHIPPING_VECTORS
+
+
+def test_discover_suggests_the_single_strongest_domain_by_default():
+    definitions, vectors = _two_clusters()
+    out = discover_domains(definitions, vectors, DISCOVER)
+    assert len(out) == 1
+    assert out[0].name == "billing"
+    assert out[0].include == "**/billing/**"
+    assert set(out[0].members) == set(BILLING_VECTORS)
+
+
+def test_discover_returns_every_cluster_ranked_by_strength_when_limit_is_zero():
+    definitions, vectors = _two_clusters()
+    out = discover_domains(definitions, vectors, DISCOVER, limit=0)
+    assert [suggestion.name for suggestion in out] == ["billing", "shipping"]
+    assert out[0].cohesion > out[1].cohesion
+
+
+def test_discover_ignores_clusters_too_small_to_be_a_domain():
+    definitions = [in_folder(name, "billing") for name in BILLING_VECTORS]
+    definitions += [in_folder("Widget", "misc"), in_folder("Gadget", "misc")]
+    vectors = BILLING_VECTORS | {"Widget": [0.0, 1.0], "Gadget": [0.1, 0.99]}
+    out = discover_domains(definitions, vectors, DISCOVER, limit=0)
+    assert [suggestion.name for suggestion in out] == ["billing"]
+
+
+def test_discover_skips_names_already_inside_a_declared_domain():
+    config = Config(
+        domains=[Context(name="billing", include=["**/billing/**"])],
+        embeddings=Embeddings(threshold=0.9),
+    )
+    definitions, vectors = _two_clusters()
+    out = discover_domains(definitions, vectors, config, limit=0)
+    assert [suggestion.name for suggestion in out] == ["shipping"]
+
+
+def test_discover_whole_mode_clusters_declared_names_and_records_their_scope():
+    config = Config(
+        domains=[Context(name="billing", include=["**/billing/**"])],
+        embeddings=Embeddings(threshold=0.9),
+    )
+    definitions, vectors = _two_clusters()
+    out = {
+        suggestion.name: suggestion
+        for suggestion in discover_domains(definitions, vectors, config, whole=True, limit=0)
+    }
+    assert out["billing"].scopes == ("billing",)
+    assert out["shipping"].scopes == ("global",)
+
+
+def test_discover_names_a_scattered_cluster_after_its_vocabulary():
+    definitions = [Definition(name, "Class", Path("src/a.py"), 1) for name in BILLING_VECTORS]
+    out = discover_domains(definitions, BILLING_VECTORS, DISCOVER, limit=0)
+    assert out[0].name == "charge"
+    assert out[0].include == "**/charge/**"
+
+
+def test_discover_needs_a_domains_worth_of_names():
+    definitions = [in_folder("Invoice", "billing"), in_folder("Charge", "billing")]
+    vectors = {"Invoice": [1.0, 0.0], "Charge": [0.999, 0.045]}
+    assert discover_domains(definitions, vectors, DISCOVER, limit=0) == []
+
+
+def test_suggestion_rank_weights_cohesion_by_size():
+    small = Suggestion("a", "**/a/**", ("x", "y"), 0.9, ("global",))
+    big = Suggestion("b", "**/b/**", ("p", "q", "r", "s"), 0.9, ("global",))
+    assert big.rank > small.rank
 
 
 def test_near_synonyms_ignores_names_chained_through_a_shared_word():
