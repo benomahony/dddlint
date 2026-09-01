@@ -3,8 +3,17 @@ import json
 import pytest
 
 from dddlint.config import Config, Context, SynonymGroup
-from dddlint.insights import UNASSIGNED, Insight, Point
-from dddlint.view import OTHER, SERIES, UNOWNED, _build_graph, _build_scatter, _generate_html
+from dddlint.insights import UNASSIGNED, Insight, Point, Suggestion
+from dddlint.view import (
+    OTHER,
+    SERIES,
+    UNOWNED,
+    _build_graph,
+    _build_scatter,
+    _generate_html,
+    _generate_scatter,
+    _hull,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -154,3 +163,64 @@ def test_scatter_anchors_one_name_per_populated_cluster():
     ]
     anchored = {p["name"] for p in _build_scatter(points, [])["points"] if p["anchor"]}
     assert anchored == {"Bill"}
+
+
+def suggestion(name: str, *members: str) -> Suggestion:
+    return Suggestion(name, f"**/{name}/**", members, 0.9, ("global",))
+
+
+def test_scatter_has_no_proposed_boundaries_without_suggestions():
+    points = [point("Widget", UNASSIGNED, 0), point("Gadget", UNASSIGNED, 0)]
+    assert _build_scatter(points, [])["proposed"] == []
+
+
+def test_scatter_draws_a_proposed_boundary_around_a_suggested_cluster():
+    points = [
+        point("Widget", UNASSIGNED, 0, 0.0, 0.0),
+        point("Gadget", UNASSIGNED, 0, 4.0, 0.0),
+        point("Sprocket", UNASSIGNED, 0, 2.0, 4.0),
+    ]
+    proposed = _build_scatter(points, [], [suggestion("hardware", "Widget", "Gadget", "Sprocket")])[
+        "proposed"
+    ]
+    assert [region["name"] for region in proposed] == ["hardware"]
+    assert len(proposed[0]["hull"]) >= 3
+
+
+def test_scatter_ignores_a_suggestion_too_small_to_bound():
+    points = [point("Widget", UNASSIGNED, 0, 0.0, 0.0), point("Gadget", UNASSIGNED, 0, 1.0, 0.0)]
+    proposed = _build_scatter(points, [], [suggestion("hardware", "Widget", "Gadget")])["proposed"]
+    assert proposed == []
+
+
+def test_hull_pushes_the_boundary_out_past_the_members():
+    members = [
+        point("a", UNASSIGNED, 0, 0.0, 0.0),
+        point("b", UNASSIGNED, 0, 2.0, 0.0),
+        point("c", UNASSIGNED, 0, 1.0, 2.0),
+    ]
+    hull = _hull(members, 1.0)
+    assert len(hull) >= 3
+    xs = [x for x, _ in hull]
+    assert min(xs) < 0.0 and max(xs) > 2.0
+
+
+def test_hull_falls_back_to_a_box_for_collinear_members():
+    members = [
+        point("a", UNASSIGNED, 0, 0.0, 0.0),
+        point("b", UNASSIGNED, 0, 1.0, 0.0),
+        point("c", UNASSIGNED, 0, 2.0, 0.0),
+    ]
+    hull = _hull(members, 0.5)
+    assert len(hull) == 4
+
+
+def test_generate_scatter_embeds_the_proposed_colour_when_a_domain_is_suggested():
+    points = [
+        point("Widget", UNASSIGNED, 0, 0.0, 0.0),
+        point("Gadget", UNASSIGNED, 0, 4.0, 0.0),
+        point("Sprocket", UNASSIGNED, 0, 2.0, 4.0),
+    ]
+    html = _generate_scatter(points, [], [suggestion("hardware", "Widget", "Gadget", "Sprocket")])
+    assert "__PROPOSED__" not in html
+    assert '"name": "hardware"' in html or '"name":"hardware"' in html

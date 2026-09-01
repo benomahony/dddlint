@@ -114,10 +114,12 @@ triangles for verbs and dots for nouns. One named boundary wraps each bounded
 context, stretched around every name that belongs to it, so a context is one
 region however far PCA scatters its names. Names in files no `domains` or
 `contexts` glob claims are `unassigned`: grey, dashed, and inside no boundary,
-because they belong to no bounded context yet. Hovering a boundary brightens it and
-labels every name inside; otherwise one name per cluster is labelled, outliers
-always are, and zooming past 1.4 labels everything. Pan and zoom in the
-browser.
+because they belong to no bounded context yet. Where those unassigned names form
+a cohesive cluster, a purple dashed outline labelled `◇ name` proposes a domain
+to gather them — the same suggestions [`discover`](#discover) prints. Hovering a
+boundary brightens it and labels every name inside; otherwise one name per
+cluster is labelled, outliers always are, and zooming past 1.4 labels
+everything. Pan and zoom in the browser.
 
 ![The dddlint vocabulary map of its own source: verbs as triangles, nouns as dots, one boundary per bounded context](../assets/dddmap.png){ loading=lazy }
 
@@ -151,6 +153,10 @@ each suggestion is the next domain hiding in code you have not carved out yet,
 strongest first. `--limit` raises how many it shows. `--all` clusters every
 name instead, which additionally flags a cluster whose members straddle two
 declared domains — a sign your current boundaries may overlap.
+
+The same suggestions are drawn on the [`map`](#map) as purple dashed outlines,
+so you can see a proposed boundary sitting among the names it would gather
+before committing it to the config.
 
 ```text
 42 names, clustering unassigned names

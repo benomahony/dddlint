@@ -240,7 +240,7 @@ def vocabulary_map(
         console.print("[bold yellow]no definitions found[/bold yellow]")
         raise typer.Exit(0)
     vectors = _vectors([d.name for d in collected], settings, config.parent)
-    from .insights import context_outliers, map_points, near_synonyms
+    from .insights import context_outliers, discover_domains, map_points, near_synonyms
 
     insights = near_synonyms(collected, vectors, settings) + context_outliers(
         collected, vectors, settings
@@ -254,8 +254,9 @@ def vocabulary_map(
     from .view import _generate_scatter
 
     points = map_points(collected, vectors, settings)
+    suggestions = discover_domains(collected, vectors, settings, limit=0)
     target = config.parent / "dddmap.html"
-    target.write_text(_generate_scatter(points, insights))
+    target.write_text(_generate_scatter(points, insights, suggestions))
     console.print(f"[dim]map written to file://{target.resolve()}[/dim]", soft_wrap=True)
     webbrowser.open(f"file://{target.resolve()}")
 

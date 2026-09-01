@@ -116,7 +116,7 @@ Config rules are checked against `dddlint.yaml` itself on every run.
 
 Vectors are cached in `.dddlint/embeddings.json`, keyed by model and dimensions, so only new names are ever embedded. Configure the model under `embeddings` in `dddlint.yaml`.
 
-Every run also writes `dddmap.html` beside the config and opens it: the whole vocabulary laid out by embedding similarity, verbs as triangles and nouns as dots, with one boundary drawn around each bounded context.
+Every run also writes `dddmap.html` beside the config and opens it: the whole vocabulary laid out by embedding similarity, verbs as triangles and nouns as dots, with one boundary drawn around each bounded context. Cohesive clusters of names that belong to no context yet get a purple dashed outline — a proposed domain, the same suggestion `dddlint discover` prints.
 
 ![The dddlint vocabulary map: names placed by embedding similarity, with a boundary drawn around each bounded context](docs/assets/dddmap.png)
 

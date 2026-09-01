@@ -4,7 +4,7 @@ from collections import Counter, defaultdict
 from math import cos, radians, sin
 
 from .config import Config
-from .insights import UNASSIGNED, Insight, Point
+from .insights import UNASSIGNED, Insight, Point, Suggestion
 
 _COLORS = {
     "global": "#7c3aed",
@@ -373,6 +373,7 @@ SERIES = ("#3987e5", "#d95926", "#199e70")
 OTHER = "#8a8a80"
 OUTLIER = "#fab219"
 UNOWNED = "#6b7280"
+PROPOSED = "#a855f7"
 
 
 def _scope_colors(points: list[Point]) -> dict[str, str]:
@@ -444,6 +445,68 @@ def _regions(points: list[Point], radius: float) -> list[dict]:
     ]
 
 
+def _convex(pts: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    """Andrew's monotone chain: the outer fence around a set of points, counter-clockwise."""
+    assert len(pts) >= 3, "a hull needs at least three points to enclose"
+
+    def turn(o: tuple, a: tuple, b: tuple) -> float:
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    lower: list[tuple[float, float]] = []
+    for point in pts:
+        while len(lower) >= 2 and turn(lower[-2], lower[-1], point) <= 0:
+            lower.pop()
+        lower.append(point)
+    upper: list[tuple[float, float]] = []
+    for point in reversed(pts):
+        while len(upper) >= 2 and turn(upper[-2], upper[-1], point) <= 0:
+            upper.pop()
+        upper.append(point)
+    return lower[:-1] + upper[:-1]
+
+
+def _box(pts: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    """A four-corner fallback for points a hull would collapse: all on one line, or two deep."""
+    assert pts, "need points to bound with a box"
+    xs, ys = [x for x, _ in pts], [y for _, y in pts]
+    x0, x1 = (min(xs) - 0.5, max(xs) + 0.5) if min(xs) == max(xs) else (min(xs), max(xs))
+    y0, y1 = (min(ys) - 0.5, max(ys) + 0.5) if min(ys) == max(ys) else (min(ys), max(ys))
+    return [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+
+
+def _hull(members: list[Point], radius: float) -> list[list[float]]:
+    """A closed boundary around the members, pushed out by radius so it wraps the markers."""
+    assert len(members) >= 3, "a proposed domain needs at least three names to bound"
+    assert radius > 0.0, "radius must be a positive distance"
+    pts = sorted({(member.x, member.y) for member in members})
+    fence = _convex(pts) if len(pts) >= 3 else pts
+    if len(fence) < 3:
+        fence = _box(pts)
+    cx = sum(x for x, _ in fence) / len(fence)
+    cy = sum(y for _, y in fence) / len(fence)
+    out: list[list[float]] = []
+    for x, y in fence:
+        dx, dy = x - cx, y - cy
+        reach = (dx * dx + dy * dy) ** 0.5 or 1.0
+        out.append([x + dx / reach * radius, y + dy / reach * radius])
+    assert len(out) >= 3, "a proposed boundary must close into a polygon"
+    return out
+
+
+def _proposed_regions(
+    points: list[Point], suggestions: list[Suggestion], radius: float
+) -> list[dict]:
+    assert radius > 0.0, "radius must be a positive distance"
+    index = {point.name: point for point in points}
+    out: list[dict] = []
+    for suggestion in suggestions:
+        members = [index[name] for name in suggestion.members if name in index]
+        if len(members) < 3:
+            continue
+        out.append({"name": suggestion.name, "hull": _hull(members, radius)})
+    return out
+
+
 def _anchors(points: list[Point]) -> set[str]:
     assert points, "need points to pick anchors from"
     assert all(point.name for point in points), "every point must have a name"
@@ -463,11 +526,13 @@ def _anchors(points: list[Point]) -> set[str]:
     return out
 
 
-def _build_scatter(points: list[Point], insights: list[Insight]) -> dict:
+def _build_scatter(
+    points: list[Point], insights: list[Insight], suggestions: list[Suggestion] | None = None
+) -> dict:
     assert all(point.name for point in points), "every point must have a name"
     assert all(insight.rule for insight in insights), "every insight must carry a rule"
     if not points:
-        return {"points": [], "regions": [], "legend": [], "radius": 0.0}
+        return {"points": [], "regions": [], "proposed": [], "legend": [], "radius": 0.0}
     colors = _scope_colors(points)
     flagged = {name for i in insights if i.rule == "context-outlier" for name in i.names}
     anchors = _anchors(points)
@@ -488,6 +553,7 @@ def _build_scatter(points: list[Point], insights: list[Insight]) -> dict:
             for point in points
         ],
         "regions": _regions(points, spacing * 0.75),
+        "proposed": _proposed_regions(points, suggestions or [], spacing * 0.75),
         "radius": spacing * 0.75,
         "legend": [{"scope": scope, "color": color} for scope, color in colors.items()],
     }
@@ -522,10 +588,12 @@ _SCATTER_TEMPLATE = """\
 <div id="legend"></div>
 <div id="caption">Names placed by embedding similarity, flattened with PCA. Distance is
 approximate: one named boundary per bounded context, stretched to hold every name that
-belongs to it. Dashed grey names belong to no context yet — give them one.</div>
+belongs to it. Dashed grey names belong to no context yet; a purple dashed outline is a
+proposed domain that would gather some of them.</div>
 <script>
 const DATA = __DATA__;
 const OUTLIER = '__OUTLIER__';
+const PROPOSED = '__PROPOSED__';
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 const shade = document.createElement('canvas').getContext('2d');
@@ -675,11 +743,35 @@ function bound(region) {
   ctx.fillText(region.scope, box.x + box.w / 2, box.top - r - 6);
 }
 
+function proposed(region) {
+  const pts = region.hull.map(screen);
+  if (pts.length < 3) return;
+  ctx.save();
+  ctx.beginPath();
+  pts.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+  ctx.closePath();
+  ctx.fillStyle = alpha(PROPOSED, 0.06);
+  ctx.fill();
+  ctx.setLineDash([6, 5]);
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = alpha(PROPOSED, 0.7);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  const top = pts.reduce((a, b) => b.y < a.y ? b : a);
+  const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
+  ctx.font = '600 11px system-ui';
+  ctx.fillStyle = alpha(PROPOSED, 0.9);
+  ctx.textAlign = 'center';
+  ctx.fillText('◇ ' + region.name, cx, top.y - 8);
+  ctx.restore();
+}
+
 function draw() {
   ctx.clearRect(0, 0, W, H);
   taken = [];
   for (const region of DATA.regions) if (region !== hot) bound(region);
   if (hot) bound(hot);
+  for (const region of DATA.proposed) proposed(region);
   for (const p of DATA.points) marker(p, screen([p.x, p.y]));
 }
 
@@ -688,7 +780,10 @@ document.getElementById('legend').innerHTML = DATA.legend
   .join('') +
   `<div class="leg"><div class="dot" style="background:#8a8a80"></div>noun</div>
    <div class="leg"><div class="tri"></div>verb</div>
-   <div class="leg"><div class="dot" style="background:transparent;border:2px solid ${OUTLIER}"></div>outlier</div>`;
+   <div class="leg"><div class="dot" style="background:transparent;border:2px solid ${OUTLIER}"></div>outlier</div>` +
+  (DATA.proposed.length
+    ? `<div class="leg"><div class="dot" style="background:transparent;border:1.5px dashed ${PROPOSED}"></div>proposed domain</div>`
+    : '');
 
 let pan = null;
 canvas.addEventListener('mousedown', e => { pan = { ox: e.clientX - cam.x, oy: e.clientY - cam.y }; });
@@ -719,14 +814,18 @@ draw();
 """
 
 
-def _generate_scatter(points: list[Point], insights: list[Insight]) -> str:
-    scatter = _build_scatter(points, insights)
+def _generate_scatter(
+    points: list[Point], insights: list[Insight], suggestions: list[Suggestion] | None = None
+) -> str:
+    scatter = _build_scatter(points, insights, suggestions)
     assert "points" in scatter and "regions" in scatter, "scatter must have points and regions"
     colors = {entry["scope"]: entry["color"] for entry in scatter["legend"]}
     for shape in scatter["regions"]:
         shape["color"] = colors[shape["scope"]]
-    html = _SCATTER_TEMPLATE.replace("__DATA__", json.dumps(scatter)).replace(
-        "__OUTLIER__", OUTLIER
+    html = (
+        _SCATTER_TEMPLATE.replace("__DATA__", json.dumps(scatter))
+        .replace("__OUTLIER__", OUTLIER)
+        .replace("__PROPOSED__", PROPOSED)
     )
     assert html.startswith("<!DOCTYPE html>"), "output must be an HTML document"
     return html
