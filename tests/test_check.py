@@ -2,11 +2,63 @@ from pathlib import Path
 
 import pytest
 
-from dddlint.check import check, tokenise
+from dddlint.check import check, is_test_definition, tokenise
 from dddlint.config import Config, Context, SynonymGroup
 from dddlint.extract import Definition
 
 pytestmark = pytest.mark.unit
+
+
+TWO_DOMAINS = Config(
+    domains=[
+        Context(name="billing", include=["**/billing/**"]),
+        Context(name="shipping", include=["**/shipping/**"]),
+    ]
+)
+
+
+def test_is_test_definition_spots_names_and_paths():
+    assert is_test_definition(Definition("test_charge", "Function", Path("a.py"), 1))
+    assert is_test_definition(Definition("InvoiceTest", "Class", Path("a.py"), 1))
+    assert is_test_definition(Definition("charge", "Function", Path("tests/a.py"), 1))
+    assert is_test_definition(Definition("charge", "Function", Path("src/foo_test.go"), 1))
+    assert not is_test_definition(Definition("charge", "Function", Path("src/billing/a.py"), 1))
+
+
+def test_test_domain_drift_flags_a_test_in_the_wrong_domain():
+    defs = [
+        Definition("Invoice", "Class", Path("src/billing/a.py"), 1),
+        Definition("TestInvoice", "Class", Path("src/shipping/test_a.py"), 3),
+    ]
+    findings = [f for f in check(defs, TWO_DOMAINS) if f.rule == "test-domain-drift"]
+    assert len(findings) == 1
+    assert "billing" in findings[0].message and "shipping" in findings[0].message
+    assert findings[0].name == "TestInvoice"
+
+
+def test_test_domain_drift_stays_quiet_when_the_test_sits_with_its_subject():
+    defs = [
+        Definition("Invoice", "Class", Path("src/billing/a.py"), 1),
+        Definition("TestInvoice", "Class", Path("src/billing/test_a.py"), 3),
+    ]
+    assert not any(f.rule == "test-domain-drift" for f in check(defs, TWO_DOMAINS))
+
+
+def test_test_domain_drift_ignores_unassigned_tests():
+    defs = [
+        Definition("Invoice", "Class", Path("src/billing/a.py"), 1),
+        Definition("TestInvoice", "Class", Path("tests/test_a.py"), 3),
+    ]
+    assert not any(f.rule == "test-domain-drift" for f in check(defs, TWO_DOMAINS))
+
+
+def test_test_domain_drift_ignores_an_ambiguous_subject():
+    defs = [
+        Definition("Invoice", "Class", Path("src/billing/a.py"), 1),
+        Definition("Invoice", "Class", Path("src/shipping/b.py"), 1),
+        Definition("TestInvoice", "Class", Path("src/shipping/test_a.py"), 3),
+    ]
+    assert not any(f.rule == "test-domain-drift" for f in check(defs, TWO_DOMAINS))
 
 
 def test_tokenise_splits_every_case():

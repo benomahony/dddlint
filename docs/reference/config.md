@@ -74,6 +74,7 @@ Read only by [`dddlint map`](cli.md#map). `lint` and `lsp` never embed anything.
 | `cache` | Path | `.dddlint/embeddings.json` | Vector cache, relative paths resolve against the config's directory |
 | `threshold` | float | `0.6` | Cosine similarity above which names cluster |
 | `outlier_margin` | float | `0.05` | How much closer a name must sit to another scope before it is called an outlier |
+| `discover_threshold` | float | `0.72` | Tighter cosine for `discover`: both the link bar and the minimum average cohesion a proposed domain must clear |
 
 The cache is keyed by model and dimensions, so changing either invalidates it
 rather than mixing vector spaces. Unchanged names are never re-embedded.
@@ -83,6 +84,13 @@ rather than mixing vector spaces. Unchanged names are never re-embedded.
 the default model puts the median name pair at 0.20 and the closest pair at 0.86,
 so 0.6 groups genuine pairs while 0.5 starts chaining unrelated names together.
 Raise it if the map reports noise, lower it if every name sits alone.
+
+`discover_threshold` is deliberately higher than `threshold`: proposing a domain
+is a stronger claim than flagging a near-synonym, and single-linkage clustering
+chains loosely-related names into sprawling blobs if the bar is low. It doubles
+as a floor — a candidate whose members average less cohesion than this is not
+proposed at all, so `discover` stays silent rather than naming a weak cluster.
+Lower it to surface more tentative domains; raise it to see only the tightest.
 
 ```yaml title="dddlint.yaml"
 embeddings:

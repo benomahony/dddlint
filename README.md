@@ -99,6 +99,7 @@ Global rules apply everywhere. Domain rules apply to matching paths. Context rul
 | `alias` | warning | A definition uses a non-canonical synonym, with a rename suggestion |
 | `duplicate` | warning | One name is claimed by more than one definition in the same context, so `rg name` cannot answer which one |
 | `drift` | info | The same concept is spelled multiple ways across the codebase |
+| `test-domain-drift` | error | A test lives in a different declared domain than the code it covers |
 | `config:forbidden-canonical-clash` | error | A term is both forbidden and a canonical synonym |
 | `config:alias-conflict` | warning | The same alias maps to different canonicals in different scopes |
 | `config:duplicate-name` | info | Two domains or contexts have suspiciously similar names |

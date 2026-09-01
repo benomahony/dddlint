@@ -11,6 +11,9 @@ class Embeddings(BaseModel):
     cache: Path = Path(".dddlint/embeddings.json")
     threshold: float = 0.6
     outlier_margin: float = 0.05
+    # discovery links names tighter than near-synonym detection and refuses to propose a
+    # cluster whose average cohesion falls below this, so it stays silent rather than broad-brush
+    discover_threshold: float = 0.72
 
 
 class SynonymGroup(BaseModel):

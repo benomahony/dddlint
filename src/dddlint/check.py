@@ -177,6 +177,80 @@ def _duplicates(definitions: list[Definition], config: Config) -> list[Finding]:
     return out
 
 
+_TEST_TOKENS = frozenset({"test", "tests"})
+_SUBJECT_KINDS = frozenset({"Function", "Class"})
+
+
+def is_test_name(name: str) -> bool:
+    assert name, "name must be non-empty to classify"
+    tokens = tokenise(name)
+    return bool(tokens) and (tokens[0] in _TEST_TOKENS or tokens[-1] in _TEST_TOKENS)
+
+
+def is_test_path(path: Path) -> bool:
+    assert isinstance(path, Path), "path must be a Path, not a str"
+    if {part.lower() for part in path.parts} & _TEST_TOKENS:
+        return True
+    stem = path.stem.lower()
+    return stem.startswith("test_") or stem.endswith("_test") or stem == "conftest"
+
+
+def is_test_definition(definition: Definition) -> bool:
+    assert definition.name, "definition must have a name to classify"
+    return is_test_name(definition.name) or is_test_path(definition.path)
+
+
+def _test_subject(definition: Definition) -> tuple[str, ...] | None:
+    """The concept a test covers: its name with the test word stripped, as sorted tokens."""
+    if definition.kind not in _SUBJECT_KINDS or not is_test_name(definition.name):
+        return None
+    tokens = tokenise(definition.name)
+    subject = tokens[1:] if tokens[0] in _TEST_TOKENS else tokens[:-1]
+    return tuple(sorted(subject)) or None
+
+
+def _implementation_scopes(definitions: list[Definition], config: Config) -> dict[tuple, set[str]]:
+    assert all(d.name for d in definitions), "every definition must have a name"
+    out: dict[tuple, set[str]] = defaultdict(set)
+    for definition in definitions:
+        if definition.kind in PATH_KINDS or is_test_definition(definition):
+            continue
+        out[tuple(sorted(tokenise(definition.name)))].add(scope_of(config, definition.path))
+    return out
+
+
+def _test_domain_drift(definitions: list[Definition], config: Config) -> list[Finding]:
+    """A test sitting in one declared domain while the code it names lives in another."""
+    assert all(d.name for d in definitions), "every definition must have a name"
+    implementations = _implementation_scopes(definitions, config)
+    out: list[Finding] = []
+    for definition in definitions:
+        subject = _test_subject(definition)
+        if subject is None:
+            continue
+        home = scope_of(config, definition.path)
+        if home == "global":
+            continue
+        owners = {scope for scope in implementations.get(subject, set()) if scope != "global"}
+        if len(owners) != 1:
+            continue
+        (owner,) = owners
+        if owner == home:
+            continue
+        spelled = " ".join(subject)
+        out.append(
+            Finding(
+                definition.path,
+                definition.line,
+                definition.name,
+                "test-domain-drift",
+                f"tests '{spelled}', which belongs to {owner}, but lives in {home}",
+                col=definition.col,
+            )
+        )
+    return out
+
+
 def check(definitions: list[Definition], config: Config) -> list[Finding]:
     assert all(d.line >= 0 for d in definitions), "definition lines must be non-negative"
     assert all(d.name for d in definitions), "every definition must have a name"
@@ -205,6 +279,7 @@ def check(definitions: list[Definition], config: Config) -> list[Finding]:
         first.setdefault(key, definition)
     if config.name_uniqueness:
         out.extend(_duplicates(definitions, config))
+    out.extend(_test_domain_drift(definitions, config))
 
     markers = frozenset(marker.lower() for marker in config.directional)
     for key, names in by_tokens.items():

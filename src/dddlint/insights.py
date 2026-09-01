@@ -5,7 +5,7 @@ from itertools import takewhile
 from math import sqrt
 from pathlib import Path
 
-from .check import owning_scope, scope_of, tokenise
+from .check import is_test_definition, owning_scope, scope_of, tokenise
 from .cluster import Vector, centroid, clusters, nearest, project, similarities
 from .config import Config
 from .extract import Definition
@@ -24,6 +24,13 @@ class Insight:
 def threshold_for(config: Config) -> float:
     threshold = config.embeddings.threshold
     assert 0.0 <= threshold <= 1.0, "embeddings threshold must be a cosine in [0, 1]"
+    assert config.embeddings.model, "an embedding model must be configured"
+    return threshold
+
+
+def discover_threshold_for(config: Config) -> float:
+    threshold = config.embeddings.discover_threshold
+    assert 0.0 <= threshold <= 1.0, "discover threshold must be a cosine in [0, 1]"
     assert config.embeddings.model, "an embedding model must be configured"
     return threshold
 
@@ -234,6 +241,11 @@ def discover_domains(
     is the next domain hiding in code you have not carved out yet. With ``whole`` set,
     every name is clustered, which also surfaces clusters that straddle existing
     boundaries. ``limit`` caps how many suggestions are returned; ``limit <= 0`` returns all.
+
+    Tests never form a domain of their own — they belong to whatever they exercise — so
+    they are dropped before clustering. A cluster is proposed only when its average
+    cohesion clears the discover threshold, so a loose blob chained together by single
+    linkage is left unsaid rather than named.
     """
     assert all(d.name for d in definitions), "every definition must have a name"
     assert all(vectors.values()), "every vector must have components"
@@ -241,15 +253,20 @@ def discover_domains(
     chosen = {
         name: definition
         for name, definition in known.items()
-        if whole or owning_scope(config, definition.path) is None
+        if not is_test_definition(definition)
+        and (whole or owning_scope(config, definition.path) is None)
     }
     if len(chosen) < MIN_DOMAIN:
         return []
+    floor = discover_threshold_for(config)
     names = sorted(chosen)
     out: list[Suggestion] = []
-    for group in clusters([vectors[name] for name in names], threshold_for(config)):
+    for group in clusters([vectors[name] for name in names], floor):
         members = [names[index] for index in group]
         if len(members) < MIN_DOMAIN:
+            continue
+        cohesion = _cohesion([vectors[member] for member in members])
+        if cohesion < floor:
             continue
         vocabulary = _domain_name(members, vectors)
         include, name = _glob_and_name([chosen[member].path for member in members], vocabulary)
@@ -259,7 +276,7 @@ def discover_domains(
                 name,
                 include,
                 tuple(members),
-                _cohesion([vectors[member] for member in members]),
+                cohesion,
                 tuple(scope for scope, _ in scopes.most_common()),
             )
         )

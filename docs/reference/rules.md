@@ -160,6 +160,44 @@ Language conventions are not drift, so three cases are exempt:
 Visibility-only pairs still report: `_validate` against `validate` in another
 module is genuine duplication.
 
+### test-domain-drift
+
+**Severity: error.** A test lives in one declared domain while the code it
+covers lives in another. A test belongs to whatever it exercises, so its
+ubiquitous-language home should be the same as its subject's.
+
+The subject is the test's own name with the `test` word stripped: `TestInvoice`
+and `test_invoice` both cover `invoice`. The finding fires only when that subject
+resolves to exactly one declared domain and the test sits in a different one, so
+a flat `tests/` tree (whose tests belong to no domain) never trips it, and an
+ambiguous subject owned by several domains is left alone.
+
+```python
+from pathlib import Path
+
+from dddlint.check import check
+from dddlint.config import Config, Context
+from dddlint.extract import Definition
+
+config = Config(
+    domains=[
+        Context(name="billing", include=["**/billing/**"]),
+        Context(name="shipping", include=["**/shipping/**"]),
+    ]
+)
+defs = [
+    Definition("Invoice", "Class", Path("src/billing/invoice.py"), 1),
+    Definition("TestInvoice", "Class", Path("src/shipping/test_invoice.py"), 1),
+]
+
+finding = next(f for f in check(defs, config) if f.rule == "test-domain-drift")
+
+assert "billing" in finding.message and "shipping" in finding.message
+```
+
+Tests are also left out of [`discover`](cli.md#discover) and the map's proposed
+boundaries entirely: they belong to existing domains, so they never form a new one.
+
 ## Insights
 
 Emitted by [`dddlint map`](cli.md#map) rather than `lint`, from embeddings of

@@ -53,6 +53,7 @@ RULE_STYLE: dict[str, str] = {
     "alias": "bold yellow",
     "alias:module": "bold yellow",
     "drift": "bold cyan",
+    "test-domain-drift": "bold red",
     "config:forbidden-canonical-clash": "bold red",
     "config:alias-conflict": "bold yellow",
     "config:duplicate-name": "bold cyan",

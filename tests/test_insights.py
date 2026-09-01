@@ -225,6 +225,31 @@ def test_discover_needs_a_domains_worth_of_names():
     assert discover_domains(definitions, vectors, DISCOVER, limit=0) == []
 
 
+# Alpha-Bravo and Bravo-Charlie each sit at cosine 0.75, so single linkage chains all three,
+# but the group averages 0.70 — below the 0.72 floor, so it should never be proposed.
+CHAINED = {
+    "Alpha": [1.0, 0.0, 0.0],
+    "Bravo": [0.75, 0.6614378, 0.0],
+    "Charlie": [0.60, 0.453561, 0.659002],
+}
+
+
+def test_discover_drops_a_loosely_chained_cluster_below_the_floor():
+    definitions = [in_folder(name, "misc") for name in CHAINED]
+    assert discover_domains(definitions, CHAINED, Config(), limit=0) == []
+
+
+def test_discover_never_proposes_a_domain_of_tests():
+    names = ["test_charge", "test_refund", "test_invoice"]
+    definitions = [Definition(name, "Function", Path(f"tests/{name}.py"), 1) for name in names]
+    vectors = {
+        "test_charge": [1.0, 0.0],
+        "test_refund": [0.999, 0.045],
+        "test_invoice": [0.998, 0.06],
+    }
+    assert discover_domains(definitions, vectors, Config(), limit=0) == []
+
+
 def test_suggestion_rank_weights_cohesion_by_size():
     small = Suggestion("a", "**/a/**", ("x", "y"), 0.9, ("global",))
     big = Suggestion("b", "**/b/**", ("p", "q", "r", "s"), 0.9, ("global",))
