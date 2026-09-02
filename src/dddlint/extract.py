@@ -48,6 +48,17 @@ def _flatten(
             stack.extendleft(reversed(item.children))
 
 
+def _result_fields(result: object) -> tuple[list[Any], list[Any]]:
+    # tslp.process() returns a dict on >=1.16 and an attribute-bearing object on <=1.13.
+    if isinstance(result, dict):
+        structure, symbols = result["structure"], result["symbols"]
+    else:
+        structure, symbols = result.structure, result.symbols  # type: ignore[attr-defined]
+    assert isinstance(structure, list), "structure must be a list of structure items"
+    assert isinstance(symbols, list), "symbols must be a list of symbol items"
+    return structure, symbols
+
+
 def language_for(path: Path) -> str | None:
     assert path.name, "path must have a filename to detect a language"
     assert isinstance(path, Path), "path must be a Path object"
@@ -88,10 +99,11 @@ def definitions(path: Path, language: str) -> list[Definition]:
         chunk_max_size=None,
     )
     result = tslp.process(source, config)
+    structure, symbols = _result_fields(result)
     source_lines = source.splitlines()
     out: list[Definition] = []
-    _flatten(result.structure, path, source_lines, out)
-    for sym in result.symbols:
+    _flatten(structure, path, source_lines, out)
+    for sym in symbols:
         kind = _kind_name(sym.kind)
         if kind not in SYMBOL_KINDS:
             continue
