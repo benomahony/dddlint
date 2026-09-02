@@ -201,6 +201,16 @@ class Suggestion:
         return self.cohesion * sqrt(len(self.members))
 
 
+def _concepts(names: list[str]) -> int:
+    """Distinct concepts in a cluster, so one word spelled several ways is not a domain.
+
+    ``Signal``, ``signal`` and ``signals`` are one idea restated — that is drift, not a
+    bounded context. A domain has to gather several different words to be worth proposing.
+    """
+    assert all(names), "every clustered name must be non-empty"
+    return len({tuple(sorted(tokenise(name))) for name in names})
+
+
 def _cohesion(vectors: list[Vector]) -> float:
     assert len(vectors) > 1, "cohesion needs at least two vectors to average over pairs"
     matrix = similarities(vectors)
@@ -263,7 +273,7 @@ def discover_domains(
     out: list[Suggestion] = []
     for group in clusters([vectors[name] for name in names], floor):
         members = [names[index] for index in group]
-        if len(members) < MIN_DOMAIN:
+        if _concepts(members) < MIN_DOMAIN:
             continue
         cohesion = _cohesion([vectors[member] for member in members])
         if cohesion < floor:

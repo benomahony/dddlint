@@ -250,6 +250,13 @@ def test_discover_never_proposes_a_domain_of_tests():
     assert discover_domains(definitions, vectors, Config(), limit=0) == []
 
 
+def test_discover_rejects_one_word_spelled_several_ways():
+    names = ["Signal", "signal", "signals"]
+    definitions = [Definition(name, "Class", Path("src/core/a.py"), 1) for name in names]
+    vectors = {"Signal": [1.0, 0.0], "signal": [0.999, 0.045], "signals": [0.998, 0.06]}
+    assert discover_domains(definitions, vectors, Config(), limit=0) == []
+
+
 def test_suggestion_rank_weights_cohesion_by_size():
     small = Suggestion("a", "**/a/**", ("x", "y"), 0.9, ("global",))
     big = Suggestion("b", "**/b/**", ("p", "q", "r", "s"), 0.9, ("global",))

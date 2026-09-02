@@ -171,15 +171,18 @@ domains:
     include: ["**/billing/**"]
 ```
 
-A cluster smaller than three names is never a domain, so it is left out. Tests
-are dropped before clustering — a test belongs to whatever it exercises, so it
-never forms a domain of its own (a misfiled test is caught by the
-[`test-domain-drift`](rules.md#test-domain-drift) lint rule instead). A candidate
-whose members average less cohesion than
+A domain has to be at least three distinct concepts, so two guards apply. A
+cluster of fewer than three names is left out, and so is one that is a single
+word spelled several ways — `Signal`, `signal`, `signals` is drift, not a
+bounded context. Tests are dropped before clustering — a test belongs to
+whatever it exercises, so it never forms a domain of its own (a misfiled test is
+caught by the [`test-domain-drift`](rules.md#test-domain-drift) lint rule
+instead). A candidate whose members average less cohesion than
 [`discover_threshold`](config.md#embeddings) is not proposed, so `discover` stays
 silent rather than naming a loose blob. Exits `0` whatever it finds; prints
 `no definitions found` on an empty tree and `no cohesive domain candidate found`
-when nothing clusters tightly enough.
+when nothing clusters tightly enough — the right answer for a single-context
+library that has no sub-domains to carve.
 
 ```sh
 dddlint discover --all --limit 0 src/
