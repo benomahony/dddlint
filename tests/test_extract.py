@@ -32,6 +32,45 @@ def test_flatten_preorder_depth_first():
     assert [d.name for d in out] == ["A", "A1", "A2", "B"]
 
 
+def test_flatten_reads_dict_shaped_nodes():
+    # Some tree-sitter-language-pack builds return plain dicts instead of dataclass objects.
+    tree = [
+        {
+            "kind": "Class",
+            "name": "A",
+            "span": {"start_line": 0},
+            "children": [{"kind": "Method", "name": "A1", "span": {"start_line": 1}}],
+        },
+        {"kind": "Class", "name": "B", "span": {"start_line": 2}},
+    ]
+    out: list = []
+    _flatten(tree, Path("x.py"), [], out)
+    assert [d.name for d in out] == ["A", "A1", "B"]
+
+
+def test_definitions_reads_a_dict_shaped_result(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    from dddlint import extract
+
+    result = {
+        "structure": [
+            {
+                "kind": "Class",
+                "name": "Repo",
+                "span": {"start_line": 0},
+                "children": [{"kind": "Method", "name": "find", "span": {"start_line": 1}}],
+            }
+        ],
+        "symbols": [{"kind": "Constant", "name": "MAX", "span": {"start_line": 2}, "doc": None}],
+    }
+    monkeypatch.setattr(extract.tslp, "process", lambda source, config: result)
+    src = tmp_path / "m.py"
+    src.write_text("class Repo:\n    def find(self): ...\nMAX = 5\n")
+    got = {(d.kind, d.name, d.line) for d in definitions(src, "python")}
+    assert ("Class", "Repo", 0) in got
+    assert ("Method", "find", 1) in got
+    assert ("Constant", "MAX", 2) in got
+
+
 def test_language_for_detects_from_suffix(tmp_path: Path):
     assert language_for(tmp_path / "x.py") == "python"
 

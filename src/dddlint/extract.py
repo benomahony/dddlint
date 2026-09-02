@@ -30,6 +30,24 @@ def _kind_name(kind: object) -> str:
     return name
 
 
+def _field(obj: Any, name: str, default: Any = None) -> Any:
+    """Read a field whether tree-sitter-language-pack returns dataclass objects or plain dicts.
+
+    The native build returns attribute-style ``ProcessResult`` objects, but the packaged type
+    stub declares ``ProcessResult`` a ``TypedDict``, and some builds hand back dicts to match.
+    The field names are the same either way, so one accessor spans both shapes.
+    """
+    assert name, "a field name is required to read"
+    if isinstance(obj, dict):
+        return obj.get(name, default)
+    return getattr(obj, name, default)
+
+
+def _start_line(item: Any) -> int:
+    line = _field(_field(item, "span"), "start_line", 0)
+    return line if isinstance(line, int) and line >= 0 else 0
+
+
 def _flatten(
     items: Iterable[Any], path: Path, source_lines: list[str], out: list[Definition]
 ) -> None:
@@ -38,14 +56,16 @@ def _flatten(
     stack: deque[Any] = deque(items)
     while stack:
         item = stack.popleft()
-        kind = _kind_name(item.kind)
-        if item.name and kind in DEFINITION_KINDS:
-            line = item.span.start_line
+        name = _field(item, "name")
+        kind = _kind_name(_field(item, "kind"))
+        if name and kind in DEFINITION_KINDS:
+            line = _start_line(item)
             line_text = source_lines[line] if line < len(source_lines) else ""
-            col = line_text.find(item.name)
-            out.append(Definition(item.name, kind, path, line, max(col, 0), item.doc_comment))
-        if item.children:
-            stack.extendleft(reversed(item.children))
+            col = line_text.find(name)
+            out.append(Definition(name, kind, path, line, max(col, 0), _field(item, "doc_comment")))
+        children = _field(item, "children") or []
+        if children:
+            stack.extendleft(reversed(list(children)))
 
 
 def language_for(path: Path) -> str | None:
@@ -90,13 +110,14 @@ def definitions(path: Path, language: str) -> list[Definition]:
     result = tslp.process(source, config)
     source_lines = source.splitlines()
     out: list[Definition] = []
-    _flatten(result.structure, path, source_lines, out)
-    for sym in result.symbols:
-        kind = _kind_name(sym.kind)
-        if kind not in SYMBOL_KINDS:
+    _flatten(_field(result, "structure") or [], path, source_lines, out)
+    for sym in _field(result, "symbols") or []:
+        name = _field(sym, "name")
+        kind = _kind_name(_field(sym, "kind"))
+        if not name or kind not in SYMBOL_KINDS:
             continue
-        line = sym.span.start_line
+        line = _start_line(sym)
         line_text = source_lines[line] if line < len(source_lines) else ""
-        col = line_text.find(sym.name)
-        out.append(Definition(sym.name, kind, path, line, max(col, 0), sym.doc))
+        col = line_text.find(name)
+        out.append(Definition(name, kind, path, line, max(col, 0), _field(sym, "doc")))
     return out
