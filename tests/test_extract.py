@@ -103,6 +103,39 @@ def test_definitions_captures_constant_symbols(tmp_path: Path):
     assert "MAX" in names
 
 
+def test_definitions_captures_module_level_bindings(tmp_path: Path):
+    src = tmp_path / "words.py"
+    src.write_text(
+        "from x import Lexicon\nShopping = Lexicon(name='shopping')\nDueDate = Lexicon()\n"
+    )
+    got = {(d.kind, d.name) for d in definitions(src, "python")}
+    assert ("Constant", "Shopping") in got
+    assert ("Constant", "DueDate") in got
+
+
+def test_definitions_unpacks_a_tuple_assignment(tmp_path: Path):
+    src = tmp_path / "m.py"
+    src.write_text("east, west = make()\n")
+    names = {d.name for d in definitions(src, "python")}
+    assert {"east", "west"} <= names
+
+
+def test_definitions_skips_module_dunders(tmp_path: Path):
+    src = tmp_path / "m.py"
+    src.write_text("__all__ = ['A']\nVERSION = '1'\n")
+    names = {d.name for d in definitions(src, "python")}
+    assert "VERSION" in names
+    assert "__all__" not in names
+
+
+def test_definitions_ignores_local_assignments_inside_functions(tmp_path: Path):
+    src = tmp_path / "m.py"
+    src.write_text("TOP = 1\ndef f():\n    local = 2\n    return local\n")
+    names = {d.name for d in definitions(src, "python")}
+    assert "TOP" in names
+    assert "local" not in names
+
+
 def test_path_definitions_name_every_directory_and_the_module(tmp_path: Path):
     src = tmp_path / "commons" / "utils" / "file_utils.py"
     src.parent.mkdir(parents=True)

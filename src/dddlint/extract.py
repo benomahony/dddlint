@@ -74,6 +74,77 @@ def language_for(path: Path) -> str | None:
     return tslp.detect_language_from_path(str(path))
 
 
+# tree-sitter-language-pack extracts classes and functions but not the module-level
+# assignments where dynamic languages keep their vocabulary (Shopping = Lexicon(...)),
+# so those are read straight from the parse tree. These are the node types that bind a
+# name at module scope across common languages; the containers hold several at once.
+_BINDING_CONTAINERS = frozenset(
+    {
+        "pattern_list",
+        "tuple_pattern",
+        "list_pattern",
+        "expression_list",
+        "tuple",
+        "array_pattern",
+        "object_pattern",
+        "identifier_list",
+    }
+)
+_BINDING_LEAVES = frozenset({"identifier", "constant"})
+
+
+def _binding_targets(node: Any) -> list[Any]:
+    """The left-hand side(s) of a module-level binding, whatever the language calls it."""
+    kind = node.type
+    if kind in {"assignment", "assignment_expression", "short_var_declaration"}:
+        left = node.child_by_field_name("left")
+        return [left] if left is not None else []
+    if kind in {"variable_declaration", "lexical_declaration"}:
+        return [
+            d.child_by_field_name("name") for d in node.children if d.type == "variable_declarator"
+        ]
+    if kind in {"var_declaration", "const_declaration"}:
+        return [s.child_by_field_name("name") for s in node.children if s.type.endswith("_spec")]
+    if kind in {"let_declaration", "const_item", "static_item"}:
+        return [node.child_by_field_name("pattern") or node.child_by_field_name("name")]
+    return []
+
+
+def _binding_names(target: Any) -> list[Any]:
+    """The identifier nodes a target binds: a plain name, or several from a tuple pattern."""
+    if target is None:
+        return []
+    if target.type in _BINDING_LEAVES:
+        return [target]
+    if target.type in _BINDING_CONTAINERS:
+        return [ident for child in target.children for ident in _binding_names(child)]
+    return []
+
+
+def _module_bindings(
+    source: str, language: str, path: Path, taken: set[tuple[str, int]]
+) -> list[Definition]:
+    assert language, "language must be non-empty to parse"
+    try:
+        tree = tslp.get_parser(language).parse(source.encode("utf-8", "ignore"))
+    except Exception:  # noqa: BLE001 - an unparseable file simply yields no extra bindings
+        return []
+    out: list[Definition] = []
+    for child in tree.root_node.children:
+        statement = (
+            child.children[0] if child.type == "expression_statement" and child.children else child
+        )
+        for target in _binding_targets(statement):
+            for ident in _binding_names(target):
+                name = ident.text.decode("utf-8", "ignore")
+                line, col = ident.start_point[0], ident.start_point[1]
+                dunder = name.startswith("__") and name.endswith("__")
+                if name and not dunder and (name, line) not in taken:
+                    taken.add((name, line))
+                    out.append(Definition(name, "Constant", path, line, max(col, 0)))
+    return out
+
+
 def _package_anchor(folder: Path) -> Path:
     assert folder.name, "a package must have a directory name"
     assert not folder.is_file(), "a package must be a directory, not a file"
@@ -120,4 +191,5 @@ def definitions(path: Path, language: str) -> list[Definition]:
         line_text = source_lines[line] if line < len(source_lines) else ""
         col = line_text.find(name)
         out.append(Definition(name, kind, path, line, max(col, 0), _field(sym, "doc")))
+    out.extend(_module_bindings(source, language, path, {(d.name, d.line) for d in out}))
     return out
