@@ -74,51 +74,44 @@ def language_for(path: Path) -> str | None:
     return tslp.detect_language_from_path(str(path))
 
 
-# tree-sitter-language-pack extracts classes and functions but not the module-level
-# assignments where dynamic languages keep their vocabulary (Shopping = Lexicon(...)),
-# so those are read straight from the parse tree. These are the node types that bind a
-# name at module scope across common languages; the containers hold several at once.
-_BINDING_CONTAINERS = frozenset(
-    {
-        "pattern_list",
-        "tuple_pattern",
-        "list_pattern",
-        "expression_list",
-        "tuple",
-        "array_pattern",
-        "object_pattern",
-        "identifier_list",
-    }
-)
-_BINDING_LEAVES = frozenset({"identifier", "constant"})
+# tree-sitter-language-pack extracts classes and functions, but not the module-level
+# assignments where dynamic languages keep their vocabulary (Shopping = Lexicon(...)), and
+# no standard tags query captures those. So they are read from the parse tree by tree-sitter's
+# field conventions rather than any grammar's node-type names, which keeps this language-agnostic:
+# a binding exposes a `left` (assignment) or a `name` beside a `value` (declaration); a `body`
+# marks a scope to leave to tslp; declarations that wrap several bindings are descended into.
+_WRAP_DEPTH = 2
 
 
-def _binding_targets(node: Any) -> list[Any]:
-    """The left-hand side(s) of a module-level binding, whatever the language calls it."""
-    kind = node.type
-    if kind in {"assignment", "assignment_expression", "short_var_declaration"}:
-        left = node.child_by_field_name("left")
-        return [left] if left is not None else []
-    if kind in {"variable_declaration", "lexical_declaration"}:
-        return [
-            d.child_by_field_name("name") for d in node.children if d.type == "variable_declarator"
-        ]
-    if kind in {"var_declaration", "const_declaration"}:
-        return [s.child_by_field_name("name") for s in node.children if s.type.endswith("_spec")]
-    if kind in {"let_declaration", "const_item", "static_item"}:
-        return [node.child_by_field_name("pattern") or node.child_by_field_name("name")]
+def _bound_names(node: Any) -> list[Any]:
+    """The identifier nodes a top-level statement binds, found by field convention alone."""
+    if node.child_by_field_name("body") is not None:
+        return []  # a function/class/block scope: tslp already names it, its insides are local
+    left = node.child_by_field_name("left")
+    if left is not None and node.child_by_field_name("right") is not None:
+        return _identifiers(left)
+    name = node.child_by_field_name("name")
+    if name is not None and node.child_by_field_name("value") is not None:
+        return _identifiers(name)
     return []
 
 
-def _binding_names(target: Any) -> list[Any]:
-    """The identifier nodes a target binds: a plain name, or several from a tuple pattern."""
-    if target is None:
-        return []
-    if target.type in _BINDING_LEAVES:
-        return [target]
-    if target.type in _BINDING_CONTAINERS:
-        return [ident for child in target.children for ident in _binding_names(child)]
-    return []
+def _descend(node: Any, depth: int) -> list[Any]:
+    """Collect bindings from a statement and the declarations it wraps (const a = 1, b = 2)."""
+    found = _bound_names(node)
+    if found or depth <= 0 or node.child_by_field_name("body") is not None:
+        return found
+    return [
+        name for child in node.children if child.is_named for name in _descend(child, depth - 1)
+    ]
+
+
+def _identifiers(node: Any) -> list[Any]:
+    """The named leaves under a binding target that read as identifiers, so `a, b` yields both."""
+    named = [child for child in node.children if child.is_named]
+    if not named:
+        return [node] if node.text.decode("utf-8", "ignore").isidentifier() else []
+    return [leaf for child in named for leaf in _identifiers(child)]
 
 
 def _module_bindings(
@@ -134,14 +127,13 @@ def _module_bindings(
         statement = (
             child.children[0] if child.type == "expression_statement" and child.children else child
         )
-        for target in _binding_targets(statement):
-            for ident in _binding_names(target):
-                name = ident.text.decode("utf-8", "ignore")
-                line, col = ident.start_point[0], ident.start_point[1]
-                dunder = name.startswith("__") and name.endswith("__")
-                if name and not dunder and (name, line) not in taken:
-                    taken.add((name, line))
-                    out.append(Definition(name, "Constant", path, line, max(col, 0)))
+        for ident in _descend(statement, _WRAP_DEPTH):
+            name = ident.text.decode("utf-8", "ignore")
+            line, col = ident.start_point[0], ident.start_point[1]
+            dunder = name.startswith("__") and name.endswith("__")
+            if name and not dunder and (name, line) not in taken:
+                taken.add((name, line))
+                out.append(Definition(name, "Constant", path, line, max(col, 0)))
     return out
 
 

@@ -136,6 +136,19 @@ def test_definitions_ignores_local_assignments_inside_functions(tmp_path: Path):
     assert "local" not in names
 
 
+def test_module_bindings_are_language_agnostic(tmp_path: Path):
+    # The same field conventions, not per-language node names, catch bindings everywhere.
+    js = tmp_path / "m.js"
+    js.write_text("const Shopping = lex();\nlet a = 1, b = 2;\nfunction g(){ let local = 1; }\n")
+    js_names = {d.name for d in definitions(js, "javascript")}
+    assert {"Shopping", "a", "b"} <= js_names and "local" not in js_names
+
+    rust = tmp_path / "m.rs"
+    rust.write_text('static NAME: &str = "x";\nfn g(){ let local = 1; }\n')
+    rust_names = {d.name for d in definitions(rust, "rust")}
+    assert "NAME" in rust_names and "local" not in rust_names
+
+
 def test_path_definitions_name_every_directory_and_the_module(tmp_path: Path):
     src = tmp_path / "commons" / "utils" / "file_utils.py"
     src.parent.mkdir(parents=True)
