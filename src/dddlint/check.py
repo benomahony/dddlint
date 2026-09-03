@@ -254,8 +254,6 @@ def _test_domain_drift(definitions: list[Definition], config: Config) -> list[Fi
 def check(definitions: list[Definition], config: Config) -> list[Finding]:
     assert all(d.line >= 0 for d in definitions), "definition lines must be non-negative"
     assert all(d.name for d in definitions), "every definition must have a name"
-    exempt = set(config.exempt)
-    definitions = [definition for definition in definitions if definition.name not in exempt]
     out: list[Finding] = []
     base_forbidden = {t.lower() for t in config.forbidden}
     base_aliases = _alias_map(config.synonyms)

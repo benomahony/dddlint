@@ -80,6 +80,9 @@ def language_for(path: Path) -> str | None:
 # field conventions rather than any grammar's node-type names, which keeps this language-agnostic:
 # a binding exposes a `left` (assignment) or a `name` beside a `value` (declaration); a `body`
 # marks a scope to leave to tslp; declarations that wrap several bindings are descended into.
+# Only Capitalized names are kept — the cross-language convention (Go exports, Ruby constants,
+# Rust consts, PEP 8, JS components) for a named constant, type, or domain object. A lowercase
+# module binding (app, logger, pytestmark) is an instance or framework handle, not vocabulary.
 _WRAP_DEPTH = 2
 
 
@@ -130,8 +133,7 @@ def _module_bindings(
         for ident in _descend(statement, _WRAP_DEPTH):
             name = ident.text.decode("utf-8", "ignore")
             line, col = ident.start_point[0], ident.start_point[1]
-            dunder = name.startswith("__") and name.endswith("__")
-            if name and not dunder and (name, line) not in taken:
+            if name and name[0].isupper() and (name, line) not in taken:
                 taken.add((name, line))
                 out.append(Definition(name, "Constant", path, line, max(col, 0)))
     return out

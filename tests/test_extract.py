@@ -115,33 +115,36 @@ def test_definitions_captures_module_level_bindings(tmp_path: Path):
 
 def test_definitions_unpacks_a_tuple_assignment(tmp_path: Path):
     src = tmp_path / "m.py"
-    src.write_text("east, west = make()\n")
+    src.write_text("East, West = make()\n")
     names = {d.name for d in definitions(src, "python")}
-    assert {"east", "west"} <= names
+    assert {"East", "West"} <= names
 
 
-def test_definitions_skips_module_dunders(tmp_path: Path):
+def test_definitions_keeps_only_capitalised_bindings(tmp_path: Path):
+    # Domain vocabulary is Capitalised; lowercase module handles are framework markers.
     src = tmp_path / "m.py"
-    src.write_text("__all__ = ['A']\nVERSION = '1'\n")
+    src.write_text(
+        "Shopping = Lex()\nVERSION = '1'\napp = Typer()\nlogger = getLogger()\n__all__ = []\n"
+    )
     names = {d.name for d in definitions(src, "python")}
-    assert "VERSION" in names
-    assert "__all__" not in names
+    assert {"Shopping", "VERSION"} <= names
+    assert {"app", "logger", "__all__"}.isdisjoint(names)
 
 
 def test_definitions_ignores_local_assignments_inside_functions(tmp_path: Path):
     src = tmp_path / "m.py"
-    src.write_text("TOP = 1\ndef f():\n    local = 2\n    return local\n")
+    src.write_text("TOP = 1\ndef f():\n    Local = 2\n    return Local\n")
     names = {d.name for d in definitions(src, "python")}
     assert "TOP" in names
-    assert "local" not in names
+    assert "Local" not in names
 
 
 def test_module_bindings_are_language_agnostic(tmp_path: Path):
     # The same field conventions, not per-language node names, catch bindings everywhere.
     js = tmp_path / "m.js"
-    js.write_text("const Shopping = lex();\nlet a = 1, b = 2;\nfunction g(){ let local = 1; }\n")
+    js.write_text("const Shopping = lex();\nconst app = init();\nfunction g(){ let Local = 1; }\n")
     js_names = {d.name for d in definitions(js, "javascript")}
-    assert {"Shopping", "a", "b"} <= js_names and "local" not in js_names
+    assert "Shopping" in js_names and {"app", "Local"}.isdisjoint(js_names)
 
     rust = tmp_path / "m.rs"
     rust.write_text('static NAME: &str = "x";\nfn g(){ let local = 1; }\n')

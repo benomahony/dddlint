@@ -1,6 +1,6 @@
 # dddlint
 
-Polyglot ubiquitous language linter. Reads class, function, method, type, and module-level binding names across **306 languages** and enforces them against a domain vocabulary: banned terms, non-canonical synonyms, and one concept spelled multiple ways.
+Polyglot ubiquitous language linter. Reads class, function, method, type, and module-level constant names across **306 languages** and enforces them against a domain vocabulary: banned terms, non-canonical synonyms, and one concept spelled multiple ways.
 
 Works with any language tree-sitter recognises, without per-language queries. Slots into pre-commit hooks, CI pipelines, and coding agent loops via a non-zero exit code on findings. Ships with an LSP server for inline editor diagnostics and rename code actions.
 
