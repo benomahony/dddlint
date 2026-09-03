@@ -527,12 +527,22 @@ def _anchors(points: list[Point]) -> set[str]:
 
 
 def _build_scatter(
-    points: list[Point], insights: list[Insight], suggestions: list[Suggestion] | None = None
+    points: list[Point],
+    insights: list[Insight],
+    suggestions: list[Suggestion] | None = None,
+    merges: list[list[int]] | None = None,
 ) -> dict:
     assert all(point.name for point in points), "every point must have a name"
     assert all(insight.rule for insight in insights), "every insight must carry a rule"
     if not points:
-        return {"points": [], "regions": [], "proposed": [], "legend": [], "radius": 0.0}
+        return {
+            "points": [],
+            "regions": [],
+            "proposed": [],
+            "legend": [],
+            "radius": 0.0,
+            "merges": [],
+        }
     colors = _scope_colors(points)
     flagged = {name for i in insights if i.rule == "context-outlier" for name in i.names}
     anchors = _anchors(points)
@@ -545,6 +555,7 @@ def _build_scatter(
                 "y": point.y,
                 "role": point.role,
                 "scope": point.scope,
+                "file": point.file,
                 "color": colors[point.scope],
                 "outlier": point.name in flagged,
                 "anchor": point.name in anchors,
@@ -556,6 +567,7 @@ def _build_scatter(
         "proposed": _proposed_regions(points, suggestions or [], spacing * 0.75),
         "radius": spacing * 0.75,
         "legend": [{"scope": scope, "color": color} for scope, color in colors.items()],
+        "merges": [list(merge) for merge in (merges or [])],
     }
 
 
@@ -575,6 +587,17 @@ _SCATTER_TEMPLATE = """\
   .dot { width: 10px; height: 10px; border-radius: 50%; }
   .tri { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent;
          border-bottom: 9px solid #8a8a80; }
+  #kbar { position: fixed; bottom: 1.5rem; right: 1.5rem; display: flex; align-items: center;
+          gap: 0.6rem; background: #151824dd; padding: 0.5rem 0.8rem; border-radius: 8px;
+          color: #c3c2b7; font-size: 0.72rem; }
+  #kbar input { width: 200px; accent-color: #a855f7; }
+  #kval { min-width: 1.6rem; text-align: right; color: #e2e4f0; font-weight: 700; }
+  #groups { position: fixed; top: 5rem; right: 1.5rem; width: 200px; max-height: 62vh;
+            overflow: auto; font-size: 0.72rem; color: #c3c2b7; }
+  .ghead { color: #6b7280; margin-bottom: 0.45rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .grow { display: flex; align-items: center; gap: 0.45rem; padding: 0.16rem 0; }
+  .gsw { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+  .gn { margin-left: auto; color: #6b7280; }
   #title { position: fixed; top: 1.5rem; left: 1.5rem; font-size: 1.1rem; font-weight: 700;
            color: #e2e4f0; letter-spacing: -0.03em; }
   #caption { position: fixed; top: 3rem; left: 1.5rem; font-size: 0.72rem; color: #6b7280;
@@ -584,7 +607,9 @@ _SCATTER_TEMPLATE = """\
 <body>
 <canvas id="c"></canvas>
 <div id="title">DDD Vocabulary Map</div>
-<div id="hint">scroll to zoom · drag to pan · hover a context for its names</div>
+<div id="hint">scroll to zoom · drag to pan · drag the slider to regroup</div>
+<div id="groups"></div>
+<div id="kbar"><span>groups</span><input type="range" id="k"><span id="kval"></span></div>
 <div id="legend"></div>
 <div id="caption">Names placed by embedding similarity, flattened with PCA. Distance is
 approximate: one named boundary per bounded context, stretched to hold every name that
@@ -594,6 +619,9 @@ proposed domain that would gather some of them.</div>
 const DATA = __DATA__;
 const OUTLIER = '__OUTLIER__';
 const PROPOSED = '__PROPOSED__';
+const PALETTE = ['#3987e5','#d95926','#199e70','#a855f7','#eab308','#ec4899','#06b6d4',
+                 '#84cc16','#f97316','#8b5cf6','#14b8a6','#f43f5e','#0ea5e9','#facc15'];
+let groupLabels = null;
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 const shade = document.createElement('canvas').getContext('2d');
@@ -638,7 +666,7 @@ function labelFits(at, width) {
   return !clash;
 }
 
-function marker(p, at) {
+function marker(p, at, i) {
   ctx.beginPath();
   if (p.role === 'verb') {
     ctx.moveTo(at.x, at.y - 6);
@@ -648,7 +676,8 @@ function marker(p, at) {
   } else {
     ctx.arc(at.x, at.y, 5.5, 0, Math.PI * 2);
   }
-  ctx.fillStyle = alpha(p.color, 0.85);
+  const fill = groupLabels ? PALETTE[groupLabels[i] % PALETTE.length] : p.color;
+  ctx.fillStyle = alpha(fill, 0.85);
   ctx.fill();
   ctx.lineWidth = 2;
   ctx.setLineDash(p.unassigned && !p.outlier ? [2, 2] : []);
@@ -769,10 +798,51 @@ function proposed(region) {
 function draw() {
   ctx.clearRect(0, 0, W, H);
   taken = [];
-  for (const region of DATA.regions) if (region !== hot) bound(region);
-  if (hot) bound(hot);
-  for (const region of DATA.proposed) proposed(region);
-  for (const p of DATA.points) marker(p, screen([p.x, p.y]));
+  if (!groupLabels) {
+    for (const region of DATA.regions) if (region !== hot) bound(region);
+    if (hot) bound(hot);
+    for (const region of DATA.proposed) proposed(region);
+  }
+  DATA.points.forEach((p, i) => marker(p, screen([p.x, p.y]), i));
+}
+
+function cutLabels(k) {
+  const n = DATA.points.length;
+  const parent = Array.from({ length: n }, (_, i) => i);
+  const find = x => { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; };
+  for (let m = 0; m < n - k && m < DATA.merges.length; m++) {
+    const a = find(DATA.merges[m][0]), b = find(DATA.merges[m][1]);
+    if (a !== b) parent[b] = a;
+  }
+  const label = {}; let next = 0; const out = new Array(n);
+  for (let i = 0; i < n; i++) { const r = find(i); if (!(r in label)) label[r] = next++; out[i] = label[r]; }
+  return out;
+}
+
+function groupTitle(members) {
+  const files = {};
+  for (const p of members) { const f = p.file || ''; files[f] = (files[f] || 0) + 1; }
+  let best = '', top = -1;
+  for (const f in files) if (files[f] > top) { top = files[f]; best = f; }
+  return best.replace(/\\.[^.]+$/, '') || 'group';
+}
+
+function renderGroups(k) {
+  const groups = {};
+  DATA.points.forEach((p, i) => (groups[groupLabels[i]] ??= []).push(p));
+  const rows = Object.entries(groups)
+    .map(([lab, members]) => ({ lab: +lab, name: groupTitle(members), n: members.length }))
+    .sort((a, b) => b.n - a.n);
+  document.getElementById('groups').innerHTML =
+    `<div class="ghead">${k} groups</div>` +
+    rows.map(r => `<div class="grow"><span class="gsw" style="background:${PALETTE[r.lab % PALETTE.length]}"></span>${r.name}<span class="gn">${r.n}</span></div>`).join('');
+}
+
+function setK(k) {
+  groupLabels = cutLabels(k);
+  document.getElementById('kval').textContent = k;
+  renderGroups(k);
+  draw();
 }
 
 document.getElementById('legend').innerHTML = DATA.legend
@@ -807,7 +877,18 @@ canvas.addEventListener('wheel', e => {
   draw();
 }, { passive: false });
 
-draw();
+if (DATA.merges && DATA.merges.length) {
+  const slider = document.getElementById('k');
+  const natural = new Set(DATA.points.map(p => p.cluster)).size;
+  slider.min = 1;
+  slider.max = DATA.points.length;
+  slider.value = Math.min(DATA.points.length, Math.max(2, natural));
+  slider.addEventListener('input', () => setK(+slider.value));
+  setK(+slider.value);
+} else {
+  document.getElementById('kbar').style.display = 'none';
+  draw();
+}
 </script>
 </body>
 </html>
@@ -815,9 +896,12 @@ draw();
 
 
 def _generate_scatter(
-    points: list[Point], insights: list[Insight], suggestions: list[Suggestion] | None = None
+    points: list[Point],
+    insights: list[Insight],
+    suggestions: list[Suggestion] | None = None,
+    merges: list[list[int]] | None = None,
 ) -> str:
-    scatter = _build_scatter(points, insights, suggestions)
+    scatter = _build_scatter(points, insights, suggestions, merges)
     assert "points" in scatter and "regions" in scatter, "scatter must have points and regions"
     colors = {entry["scope"]: entry["color"] for entry in scatter["legend"]}
     for shape in scatter["regions"]:

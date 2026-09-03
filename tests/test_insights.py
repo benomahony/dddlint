@@ -179,6 +179,12 @@ def test_discover_ranks_the_tightest_group_first():
     assert out[0].cohesion > out[1].cohesion
 
 
+def test_discover_cuts_the_dendrogram_at_k():
+    definitions, vectors = _two_files()
+    out = {s.name for s in discover_domains(definitions, vectors, TIGHT, k=2, limit=0)}
+    assert out == {"billing", "shipping"}
+
+
 def test_discover_scopes_a_spread_group_to_its_folder():
     # billing vocabulary spread across several files in one folder, diluted by other code
     defs = [

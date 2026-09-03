@@ -74,7 +74,14 @@ def test_generate_html_embeds_graph_json():
 
 
 def point(name: str, scope: str, cluster: int, x: float = 0.0, y: float = 0.0) -> Point:
-    return Point(name, x, y, "noun", scope, cluster)
+    return Point(name, x, y, "noun", scope, cluster, f"{name.lower()}.py")
+
+
+def test_scatter_embeds_the_dendrogram_and_file_labels_for_the_slider():
+    points = [point("Invoice", "billing", 0), point("Charge", "billing", 0)]
+    scatter = _build_scatter(points, [], None, [[0, 1]])
+    assert scatter["merges"] == [[0, 1]]
+    assert scatter["points"][0]["file"] == "invoice.py"
 
 
 def test_scatter_colours_scopes_by_how_common_they_are():

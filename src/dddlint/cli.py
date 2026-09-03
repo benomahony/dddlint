@@ -241,7 +241,13 @@ def vocabulary_map(
         console.print("[bold yellow]no definitions found[/bold yellow]")
         raise typer.Exit(0)
     vectors = _vectors([d.name for d in collected], settings, config.parent)
-    from .insights import context_outliers, discover_domains, map_points, near_synonyms
+    from .insights import (
+        context_outliers,
+        discover_domains,
+        map_dendrogram,
+        map_points,
+        near_synonyms,
+    )
 
     insights = near_synonyms(collected, vectors, settings) + context_outliers(
         collected, vectors, settings
@@ -256,8 +262,9 @@ def vocabulary_map(
 
     points = map_points(collected, vectors, settings)
     suggestions = discover_domains(collected, vectors, settings, limit=0)
+    merges = map_dendrogram(collected, vectors)
     target = config.parent / "dddmap.html"
-    target.write_text(_generate_scatter(points, insights, suggestions))
+    target.write_text(_generate_scatter(points, insights, suggestions, merges))
     console.print(f"[dim]map written to file://{target.resolve()}[/dim]", soft_wrap=True)
     webbrowser.open(f"file://{target.resolve()}")
 
@@ -295,6 +302,9 @@ def discover(
         typer.Option("--all/--unassigned", help="cluster every name, not just declared ones"),
     ] = False,
     limit: Annotated[int, typer.Option(help="how many suggestions to offer; 0 for all")] = 3,
+    k: Annotated[
+        int | None, typer.Option(help="cut the map's dendrogram into this many groups (the slider)")
+    ] = None,
     yes: Annotated[
         bool, typer.Option("--yes", "-y", help="accept every suggestion without asking")
     ] = False,
@@ -311,7 +321,7 @@ def discover(
     vectors = _vectors([d.name for d in collected], settings, config.parent)
     from .insights import discover_domains
 
-    suggestions = discover_domains(collected, vectors, settings, whole=whole, limit=limit)
+    suggestions = discover_domains(collected, vectors, settings, whole=whole, limit=limit, k=k)
     scope = "all names" if whole else "undeclared names"
     console.print(f"\n[bold white]{len(vectors)} names, grouping {scope}[/bold white]")
     console.rule(style="dim")

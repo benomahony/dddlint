@@ -76,3 +76,54 @@ def clusters(vectors: Sequence[Vector], threshold: float) -> list[list[int]]:
     out = sorted(grouped.values())
     assert sum(len(group) for group in out) == len(vectors), "every vector lands in one cluster"
     return out
+
+
+def dendrogram(vectors: Sequence[Vector]) -> list[list[int]]:
+    """Agglomerative average-linkage merge order: each step joins the two closest groups.
+
+    Returns ``n - 1`` merges, each a pair of original indices — one representative from each
+    group being joined. Applying the first ``n - k`` merges as unions yields ``k`` clusters, so a
+    slider over ``k`` is just a cut of this tree; see :func:`cut`.
+    """
+    count = len(vectors)
+    if count < 2:
+        return []
+    distance = 1.0 - similarities(vectors)
+    np.fill_diagonal(distance, np.inf)
+    size = np.ones(count)
+    alive = np.ones(count, dtype=bool)
+    representative = list(range(count))
+    merges: list[list[int]] = []
+    for _ in range(count - 1):
+        live = np.where(alive)[0]
+        block = distance[np.ix_(live, live)]
+        near = np.unravel_index(int(np.argmin(block)), block.shape)
+        left, right = int(live[near[0]]), int(live[near[1]])
+        merges.append([representative[left], representative[right]])
+        for other in live:
+            if other in (left, right):
+                continue
+            joined = size[left] * distance[left, other] + size[right] * distance[right, other]
+            distance[left, other] = distance[other, left] = joined / (size[left] + size[right])
+        size[left] += size[right]
+        alive[right] = False
+        distance[right, :] = distance[:, right] = np.inf
+    assert len(merges) == count - 1, "a dendrogram of n points has n - 1 merges"
+    return merges
+
+
+def cut(merges: Sequence[Sequence[int]], count: int, k: int) -> list[list[int]]:
+    """The ``k`` clusters that remain after the first ``count - k`` merges of a dendrogram."""
+    assert count > 0, "need at least one point to cut into clusters"
+    assert 1 <= k <= count, "k must be between one and the number of points"
+    parent = list(range(count))
+    for left, right in list(merges)[: count - k]:
+        a, b = _root(parent, int(left)), _root(parent, int(right))
+        if a != b:
+            parent[b] = a
+    grouped: dict[int, list[int]] = {}
+    for index in range(count):
+        grouped.setdefault(_root(parent, index), []).append(index)
+    out = sorted(grouped.values())
+    assert sum(len(group) for group in out) == count, "every point lands in one cluster"
+    return out

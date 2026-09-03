@@ -6,7 +6,7 @@ from math import sqrt
 from pathlib import Path
 
 from .check import is_test_definition, owning_scope, scope_of, tokenise
-from .cluster import Vector, centroid, clusters, nearest, project, similarities
+from .cluster import Vector, centroid, clusters, cut, dendrogram, nearest, project, similarities
 from .config import Config
 from .extract import Definition
 
@@ -144,6 +144,7 @@ class Point:
     role: str
     scope: str
     cluster: int
+    file: str = ""
 
 
 def map_points(
@@ -168,9 +169,19 @@ def map_points(
             role_of(known[name].kind),
             owning_scope(config, known[name].path) or UNASSIGNED,
             labels[index],
+            known[name].path.name,
         )
         for index, ((x, y), name) in enumerate(zip(project(matrix), names, strict=True))
     ]
+
+
+def map_dendrogram(definitions: list[Definition], vectors: Mapping[str, Vector]) -> list[list[int]]:
+    """The merge tree over the map's points, in the same name order, so a slider can cut it."""
+    assert all(d.name for d in definitions), "every definition must have a name"
+    known = _first_seen(definitions, vectors)
+    if len(known) < 2:
+        return []
+    return dendrogram([vectors[name] for name in sorted(known)])
 
 
 # a domain is more than a coincidence: below this a cluster is a pair, not a boundary
@@ -239,15 +250,17 @@ def discover_domains(
     *,
     whole: bool = False,
     limit: int = 3,
+    k: int | None = None,
 ) -> list[Suggestion]:
     """Suggest domains from the same clustering the map draws, strongest first.
 
     Names are grouped by embedding similarity at the map's threshold, so a group you can see on
-    ``dddmap`` is a group discover proposes. By default only names outside every declared domain
-    are considered; ``whole`` clusters everything. Tests are dropped — they belong to whatever
-    they exercise — a group of one word spelled several ways is skipped, and each group is scoped
-    to the file or folder it lives in so the suggestion is an include glob you can accept.
-    ``limit`` caps how many are returned; ``limit <= 0`` returns all.
+    ``dddmap`` is a group discover proposes. Pass ``k`` to cut the map's dendrogram into exactly
+    that many groups instead — the granularity you settled on with the slider. By default only
+    names outside every declared domain are considered; ``whole`` clusters everything. Tests are
+    dropped, a group of one word spelled several ways is skipped, and each group is scoped to the
+    file or folder it lives in so the suggestion is an include glob you can accept. ``limit`` caps
+    how many are returned; ``limit <= 0`` returns all.
     """
     assert all(d.name for d in definitions), "every definition must have a name"
     assert all(vectors.values()), "every vector must have components"
@@ -262,8 +275,14 @@ def discover_domains(
         return []
     code_paths = [d.path for d in known.values() if not is_test_definition(d)]
     names = sorted(chosen)
+    matrix = [vectors[name] for name in names]
+    groups = (
+        cut(dendrogram(matrix), len(names), min(k, len(names)))
+        if k
+        else clusters(matrix, threshold_for(config))
+    )
     best: dict[str, Suggestion] = {}
-    for group in clusters([vectors[name] for name in names], threshold_for(config)):
+    for group in groups:
         members = [names[index] for index in group]
         if _concepts(members) < MIN_DOMAIN:
             continue

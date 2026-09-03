@@ -3,7 +3,7 @@ import math
 
 import pytest
 
-from dddlint.cluster import centroid, clusters, nearest, project, similarities
+from dddlint.cluster import centroid, clusters, cut, dendrogram, nearest, project, similarities
 
 pytestmark = pytest.mark.unit
 
@@ -64,3 +64,26 @@ def test_nearest_picks_the_closest_centroid():
     label, score = nearest(RIGHT, {"east": RIGHT_ISH, "north": UP})
     assert label == "east"
     assert score == pytest.approx(0.96)
+
+
+TWO_GROUPS = [[1, 0], [0.99, 0.14], [0.98, 0.2], [0, 1], [0.14, 0.99], [0.2, 0.98]]
+
+
+def test_dendrogram_has_one_fewer_merge_than_points():
+    assert len(dendrogram(TWO_GROUPS)) == len(TWO_GROUPS) - 1
+
+
+def test_cut_recovers_the_two_natural_groups():
+    merges = dendrogram(TWO_GROUPS)
+    assert cut(merges, len(TWO_GROUPS), 2) == [[0, 1, 2], [3, 4, 5]]
+
+
+def test_cut_ranges_from_one_cluster_to_all_singletons():
+    merges = dendrogram(TWO_GROUPS)
+    assert cut(merges, len(TWO_GROUPS), 1) == [[0, 1, 2, 3, 4, 5]]
+    assert cut(merges, len(TWO_GROUPS), 6) == [[i] for i in range(6)]
+
+
+def test_dendrogram_of_one_point_is_empty():
+    assert dendrogram([[1.0, 0.0]]) == []
+    assert cut([], 1, 1) == [[0]]
