@@ -227,12 +227,11 @@ DISCOVER_NAMES = {
 
 def _repo_for_discover(tmp_path: Path) -> Path:
     (tmp_path / "dddlint.yaml").write_text("embeddings:\n  threshold: 0.9\n")
-    (tmp_path / "src/billing").mkdir(parents=True)
-    (tmp_path / "src/shipping").mkdir(parents=True)
-    (tmp_path / "src/billing/a.py").write_text(
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src/billing.py").write_text(
         "class Invoice: ...\nclass Charge: ...\nclass Ledger: ...\n"
     )
-    (tmp_path / "src/shipping/b.py").write_text(
+    (tmp_path / "src/shipping.py").write_text(
         "class Parcel: ...\nclass Dispatch: ...\nclass Courier: ...\n"
     )
     cache = tmp_path / ".dddlint/embeddings.json"
@@ -242,31 +241,39 @@ def _repo_for_discover(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def test_discover_suggests_the_strongest_domain_and_prints_yaml(tmp_path: Path):
-    root = _repo_for_discover(tmp_path)
-    result = runner.invoke(app, ["discover", str(root), "--config", str(root / "dddlint.yaml")])
-    assert result.exit_code == 0
-    assert "billing" in result.stdout
-    assert "**/billing/**" in result.stdout
-    assert "domains:" in result.stdout
-
-
-def test_discover_all_with_limit_lists_every_cluster(tmp_path: Path):
+def test_discover_offers_a_file_scoped_domain(tmp_path: Path):
     root = _repo_for_discover(tmp_path)
     result = runner.invoke(
         app,
-        ["discover", str(root), "--all", "--limit", "0", "--config", str(root / "dddlint.yaml")],
+        ["discover", str(root), "--config", str(root / "dddlint.yaml")],
+        input="n\nn\n",  # decline each offer
     )
     assert result.exit_code == 0
-    assert "billing" in result.stdout and "shipping" in result.stdout
+    assert "billing" in result.stdout
+    assert "**/billing.py" in result.stdout
+    assert "domains:" not in (root / "dddlint.yaml").read_text()
 
 
-def test_scope_note_flags_a_cluster_that_straddles_two_domains():
-    from dddlint.cli import _scope_note
-
-    assert "overlap" in _scope_note(("billing", "shipping"))
-    assert _scope_note(("billing", "global")) == "extends billing into unassigned code"
-    assert _scope_note(("global",)) == "new domain in unassigned code"
+def test_discover_accepts_a_domain_into_the_config(tmp_path: Path):
+    root = _repo_for_discover(tmp_path)
+    result = runner.invoke(
+        app,
+        [
+            "discover",
+            str(root),
+            "--all",
+            "--limit",
+            "0",
+            "--yes",
+            "--config",
+            str(root / "dddlint.yaml"),
+        ],
+    )
+    assert result.exit_code == 0
+    written = (root / "dddlint.yaml").read_text()
+    assert "domains:" in written
+    assert "name: billing" in written and "name: shipping" in written
+    assert '"**/billing.py"' in written
 
 
 def test_discover_on_an_empty_tree_says_so(tmp_path: Path):

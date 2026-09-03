@@ -28,13 +28,6 @@ def threshold_for(config: Config) -> float:
     return threshold
 
 
-def discover_threshold_for(config: Config) -> float:
-    threshold = config.embeddings.discover_threshold
-    assert 0.0 <= threshold <= 1.0, "discover threshold must be a cosine in [0, 1]"
-    assert config.embeddings.model, "an embedding model must be configured"
-    return threshold
-
-
 def _same_token(first: str, second: str) -> bool:
     assert first and second, "tokens must be non-empty to compare"
     assert first == first.lower() and second == second.lower(), "tokens must be lowercased"
@@ -219,22 +212,24 @@ def _cohesion(vectors: list[Vector]) -> float:
     return sum(pairs) / len(pairs)
 
 
-def _glob_and_name(paths: list[Path], vocabulary: str) -> tuple[str, str]:
-    """Where the cluster lives (a path glob) and what to call it (its directory, else its words)."""
-    assert paths, "a suggestion must have member paths to place"
-    assert vocabulary, "need a fallback name drawn from the vocabulary"
-    modal, _ = Counter(path.parent.name for path in paths).most_common(1)[0]
-    if modal in GENERIC_DIRS:
-        return f"**/{vocabulary}/**", vocabulary
-    return f"**/{modal}/**", modal
+def _scope(member_paths: list[Path], code_paths: list[Path]) -> tuple[str, str] | None:
+    """Where a cluster localises, tight enough to be an include glob: its file, else its folder.
 
-
-def _domain_name(names: list[str], vectors: Mapping[str, Vector]) -> str:
-    """The cluster's centre of gravity: the first token of the name nearest its centroid."""
-    assert names, "a cluster names at least one definition"
-    hub = centroid([vectors[name] for name in names])
-    nearest_name = max(names, key=lambda name: similarities([vectors[name], hub])[0][1])
-    return tokenise(nearest_name)[0]
+    Domains usually live in one module, so a cluster that concentrates in a file scopes to it
+    (``**/request.py``); one spread across a distinctive folder scopes to it (``**/words/**``). A
+    cluster smeared across a generic root, or across the whole package, has no boundary to draw and
+    is left unproposed rather than named after the package.
+    """
+    assert member_paths, "a suggestion must have member paths to place"
+    modal_file, hits = Counter(member_paths).most_common(1)[0]
+    if hits >= 0.6 * len(member_paths) and modal_file.stem != "__init__":
+        return f"**/{modal_file.name}", modal_file.stem
+    modal_dir, _ = Counter(path.parent.name for path in member_paths).most_common(1)[0]
+    if modal_dir and modal_dir not in GENERIC_DIRS:
+        covers = sum(1 for path in code_paths if modal_dir in path.parts)
+        if not code_paths or covers < 0.9 * len(code_paths):
+            return f"**/{modal_dir}/**", modal_dir
+    return None
 
 
 def discover_domains(
@@ -243,19 +238,16 @@ def discover_domains(
     config: Config,
     *,
     whole: bool = False,
-    limit: int = 1,
+    limit: int = 3,
 ) -> list[Suggestion]:
-    """Cluster names into candidate domains, ranked strongest first.
+    """Suggest domains from the same clustering the map draws, strongest first.
 
-    By default only names outside every declared domain are considered, so the result
-    is the next domain hiding in code you have not carved out yet. With ``whole`` set,
-    every name is clustered, which also surfaces clusters that straddle existing
-    boundaries. ``limit`` caps how many suggestions are returned; ``limit <= 0`` returns all.
-
-    Tests never form a domain of their own — they belong to whatever they exercise — so
-    they are dropped before clustering. A cluster is proposed only when its average
-    cohesion clears the discover threshold, so a loose blob chained together by single
-    linkage is left unsaid rather than named.
+    Names are grouped by embedding similarity at the map's threshold, so a group you can see on
+    ``dddmap`` is a group discover proposes. By default only names outside every declared domain
+    are considered; ``whole`` clusters everything. Tests are dropped — they belong to whatever
+    they exercise — a group of one word spelled several ways is skipped, and each group is scoped
+    to the file or folder it lives in so the suggestion is an include glob you can accept.
+    ``limit`` caps how many are returned; ``limit <= 0`` returns all.
     """
     assert all(d.name for d in definitions), "every definition must have a name"
     assert all(vectors.values()), "every vector must have components"
@@ -268,27 +260,27 @@ def discover_domains(
     }
     if len(chosen) < MIN_DOMAIN:
         return []
-    floor = discover_threshold_for(config)
+    code_paths = [d.path for d in known.values() if not is_test_definition(d)]
     names = sorted(chosen)
-    out: list[Suggestion] = []
-    for group in clusters([vectors[name] for name in names], floor):
+    best: dict[str, Suggestion] = {}
+    for group in clusters([vectors[name] for name in names], threshold_for(config)):
         members = [names[index] for index in group]
         if _concepts(members) < MIN_DOMAIN:
             continue
-        cohesion = _cohesion([vectors[member] for member in members])
-        if cohesion < floor:
+        placed = _scope([chosen[member].path for member in members], code_paths)
+        if placed is None:
             continue
-        vocabulary = _domain_name(members, vectors)
-        include, name = _glob_and_name([chosen[member].path for member in members], vocabulary)
+        include, name = placed
+        cohesion = _cohesion([vectors[member] for member in members])
         scopes = Counter(scope_of(config, chosen[member].path) for member in members)
-        out.append(
-            Suggestion(
-                name,
-                include,
-                tuple(members),
-                cohesion,
-                tuple(scope for scope, _ in scopes.most_common()),
-            )
+        suggestion = Suggestion(
+            name,
+            include,
+            tuple(members),
+            cohesion,
+            tuple(scope for scope, _ in scopes.most_common()),
         )
-    ranked = sorted(out, key=lambda suggestion: -suggestion.rank)
+        if include not in best or suggestion.rank > best[include].rank:
+            best[include] = suggestion  # one file or folder, one domain: keep its strongest group
+    ranked = sorted(best.values(), key=lambda suggestion: -suggestion.rank)
     return ranked if limit <= 0 else ranked[:limit]
