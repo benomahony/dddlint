@@ -15,6 +15,7 @@ empty file is valid and produces no findings.
 | `enforce_canonical` | bool | `true` | Flag alias terms in addition to forbidden ones |
 | `name_uniqueness` | bool | `true` | Flag a name claimed by more than one definition in the same context. Set `false` to let a variable and a method share a name |
 | `forbidden` | list[str] | `[]` | Terms that must never appear in a definition name |
+| `exempt` | list[str] | `[]` | Definition names to ignore entirely, for framework markers that are not domain vocabulary (`pytestmark`, `app`, `logger`, `urlpatterns`) |
 | `exclude` | list[str] | `[]` | Paths to skip, see [exclude patterns](#exclude-patterns) |
 | `directional` | list[str] | `[to, from, before, after, src, dst]` | Tokens whose sides carry direction, exempting reordered names from [drift](rules.md#drift) |
 | `synonyms` | list[[SynonymGroup](#synonymgroup)] | `[]` | Canonical terms and their aliases |

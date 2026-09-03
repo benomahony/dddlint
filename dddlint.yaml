@@ -4,6 +4,12 @@ enforce_canonical: true
 exclude:
   - examples/**
 
+# framework markers, not domain vocabulary: module-level names the tooling reads by convention
+exempt:
+  - pytestmark
+  - app
+  - logger
+
 forbidden:
   - util
   - helper

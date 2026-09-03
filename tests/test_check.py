@@ -237,3 +237,14 @@ def test_drift_flags_visibility_only_difference():
         Definition("validate_confidence", "Function", Path("b.py"), 1),
     ]
     assert any(f.rule == "drift" for f in check(defs, config))
+
+
+def test_exempt_names_produce_no_findings():
+    config = Config(exempt=["pytestmark"])
+    defs = [
+        Definition("pytestmark", "Constant", Path("tests/a.py"), 1),
+        Definition("pytestmark", "Constant", Path("tests/b.py"), 1),
+    ]
+    assert check(defs, config) == []
+    # a name not on the list still reports as usual
+    assert any(f.rule == "duplicate" for f in check(defs, Config()))

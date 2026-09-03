@@ -33,6 +33,7 @@ class Config(BaseModel):
     enforce_canonical: bool = True
     name_uniqueness: bool = True
     forbidden: list[str] = []
+    exempt: list[str] = []
     exclude: list[str] = []
     directional: list[str] = ["to", "from", "before", "after", "src", "dst"]
     synonyms: list[SynonymGroup] = []
