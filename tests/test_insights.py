@@ -224,14 +224,17 @@ def test_discover_skips_names_already_inside_a_declared_domain():
     assert [s.name for s in discover_domains(definitions, vectors, config, limit=0)] == ["shipping"]
 
 
-def test_discover_whole_mode_includes_declared_names():
+def test_discover_never_reproposes_a_declared_domain():
+    # billing is declared as a file glob; discover must not offer it again, even in whole mode
     config = Config(
         domains=[Context(name="billing", include=["**/billing.py"])],
         embeddings=Embeddings(threshold=0.9),
     )
     definitions, vectors = _two_files()
-    names = {s.name for s in discover_domains(definitions, vectors, config, whole=True, limit=0)}
-    assert names == {"billing", "shipping"}
+    assert [s.name for s in discover_domains(definitions, vectors, config, limit=0)] == ["shipping"]
+    assert [
+        s.name for s in discover_domains(definitions, vectors, config, whole=True, limit=0)
+    ] == ["shipping"]
 
 
 def test_discover_never_proposes_a_domain_of_tests():

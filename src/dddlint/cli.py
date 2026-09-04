@@ -279,11 +279,13 @@ def _print_suggestion(suggestion: "Suggestion") -> None:
     console.print(f"        [dim]{sample}{more}[/dim]", soft_wrap=True)
 
 
-def _accept_domain(config_path: Path, name: str, include: str) -> None:
-    """Add an accepted domain to the config, keeping the existing file and its comments intact."""
+def _accept_domain(config_path: Path, name: str, include: str) -> bool:
+    """Add an accepted domain to the config, keeping the file and its comments; skip a duplicate."""
     assert config_path.exists(), "the config must exist to accept a domain into it"
-    entry = f'  - name: {name}\n    include: ["{include}"]\n'
     text = config_path.read_text()
+    if f'include: ["{include}"]' in text or f"name: {name}\n" in text:
+        return False
+    entry = f'  - name: {name}\n    include: ["{include}"]\n'
     lines = text.splitlines(keepends=True)
     header = next((i for i, line in enumerate(lines) if line.rstrip() == "domains:"), None)
     if header is None:
@@ -291,6 +293,7 @@ def _accept_domain(config_path: Path, name: str, include: str) -> None:
     else:
         lines.insert(header + 1, entry)
         config_path.write_text("".join(lines))
+    return True
 
 
 @app.command()
@@ -332,9 +335,11 @@ def discover(
     for suggestion in suggestions:
         _print_suggestion(suggestion)
         if yes or typer.confirm(f"        add domain '{suggestion.name}'?", default=False):
-            _accept_domain(config, suggestion.name, suggestion.include)
-            console.print(f"        [bold green]✔ added to {config.name}[/bold green]")
-            accepted += 1
+            if _accept_domain(config, suggestion.name, suggestion.include):
+                console.print(f"        [bold green]✔ added to {config.name}[/bold green]")
+                accepted += 1
+            else:
+                console.print(f"        [dim]already in {config.name}, skipped[/dim]")
     console.print(
         f"\n[bold cyan]◆ {accepted} of {len(suggestions)} added to {config.name}[/bold cyan]"
     )

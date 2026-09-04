@@ -274,6 +274,9 @@ def discover_domains(
     if len(chosen) < MIN_DOMAIN:
         return []
     code_paths = [d.path for d in known.values() if not is_test_definition(d)]
+    declared_scopes = config.domains + config.contexts
+    declared_names = {scope.name for scope in declared_scopes}
+    declared_includes = {glob for scope in declared_scopes for glob in scope.include}
     names = sorted(chosen)
     matrix = [vectors[name] for name in names]
     groups = (
@@ -290,6 +293,8 @@ def discover_domains(
         if placed is None:
             continue
         include, name = placed
+        if name in declared_names or include in declared_includes:
+            continue  # already a bounded context; never propose a duplicate
         cohesion = _cohesion([vectors[member] for member in members])
         scopes = Counter(scope_of(config, chosen[member].path) for member in members)
         suggestion = Suggestion(

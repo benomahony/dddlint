@@ -254,6 +254,16 @@ def test_discover_offers_a_file_scoped_domain(tmp_path: Path):
     assert "domains:" not in (root / "dddlint.yaml").read_text()
 
 
+def test_accept_domain_is_idempotent(tmp_path: Path):
+    from dddlint.cli import _accept_domain
+
+    cfg = tmp_path / "dddlint.yaml"
+    cfg.write_text("forbidden: []\n")
+    assert _accept_domain(cfg, "billing", "**/billing.py") is True
+    assert _accept_domain(cfg, "billing", "**/billing.py") is False
+    assert cfg.read_text().count("name: billing") == 1
+
+
 def test_discover_accepts_a_domain_into_the_config(tmp_path: Path):
     root = _repo_for_discover(tmp_path)
     result = runner.invoke(

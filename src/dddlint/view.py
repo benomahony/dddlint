@@ -622,6 +622,9 @@ const PROPOSED = '__PROPOSED__';
 const PALETTE = ['#3987e5','#d95926','#199e70','#a855f7','#eab308','#ec4899','#06b6d4',
                  '#84cc16','#f97316','#8b5cf6','#14b8a6','#f43f5e','#0ea5e9','#facc15'];
 let groupLabels = null;
+let live = DATA.points.map(p => [p.x, p.y]);
+let target = DATA.points.map(p => [p.x, p.y]);
+let raf = null;
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 const shade = document.createElement('canvas').getContext('2d');
@@ -803,7 +806,32 @@ function draw() {
     if (hot) bound(hot);
     for (const region of DATA.proposed) proposed(region);
   }
-  DATA.points.forEach((p, i) => marker(p, screen([p.x, p.y]), i));
+  DATA.points.forEach((p, i) => marker(p, screen(live[i]), i));
+}
+
+function retarget() {
+  const sum = {}, count = {};
+  DATA.points.forEach((p, i) => {
+    const g = groupLabels[i];
+    (sum[g] ??= [0, 0]); count[g] = (count[g] || 0) + 1;
+    sum[g][0] += p.x; sum[g][1] += p.y;
+  });
+  DATA.points.forEach((p, i) => {
+    const g = groupLabels[i];
+    target[i] = [p.x + (sum[g][0] / count[g] - p.x) * 0.6, p.y + (sum[g][1] / count[g] - p.y) * 0.6];
+  });
+  if (!raf) animate();
+}
+
+function animate() {
+  let moving = false;
+  for (let i = 0; i < live.length; i++) {
+    live[i][0] += (target[i][0] - live[i][0]) * 0.2;
+    live[i][1] += (target[i][1] - live[i][1]) * 0.2;
+    if (Math.hypot(target[i][0] - live[i][0], target[i][1] - live[i][1]) > 1e-3) moving = true;
+  }
+  draw();
+  raf = moving ? requestAnimationFrame(animate) : null;
 }
 
 function cutLabels(k) {
@@ -842,7 +870,7 @@ function setK(k) {
   groupLabels = cutLabels(k);
   document.getElementById('kval').textContent = k;
   renderGroups(k);
-  draw();
+  retarget();
 }
 
 document.getElementById('legend').innerHTML = DATA.legend
